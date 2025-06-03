@@ -19,8 +19,12 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
-        'email',
+        'user_path',
         'password',
+        'user_icon',
+        'biography',
+        'game_play_flag',
+        'user_job',
     ];
 
     /**
@@ -41,8 +45,31 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
+
+    public function points()
+    {
+        return $this->hasOne(Point::class);
+    }
+    public function pointlogs()
+    {
+        return $this->hasMany(Pointlog::class);
+    }
+    
+    public function genres()
+    {
+        return $this->belongsToMany(Genre::class);
+    }
+
+    public function posts()
+    {
+        return $this->hasMany(Post::class);
+    }
+    public function used_reactions()
+    {
+        return $this->hasMany(UserReactionPost::class);
+    }
+
 }
