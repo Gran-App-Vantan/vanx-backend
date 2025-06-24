@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('booths', function (Blueprint $table) {
             $table->id();
             $table->string('booth_name');
+            $table->string('created_group');
             $table->text('booth_content');
             $table->text('booth_image');
             $table->timestamps();
