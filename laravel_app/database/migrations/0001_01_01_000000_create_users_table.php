@@ -14,9 +14,12 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
+            $table->string('user_path')->unique();
             $table->string('password');
+            $table->text('user_icon')->nullable();
+            $table->text('biography')->nullable();
+            $table->boolean('game_play_flag')->default(false);
+            $table->enum('user_job', ['master','player','guest'])->default('player');
             $table->rememberToken();
             $table->timestamps();
         });
@@ -36,7 +39,6 @@ return new class extends Migration
             $table->integer('last_activity')->index();
         });
     }
-
     /**
      * Reverse the migrations.
      */
