@@ -8,6 +8,7 @@ class Booth extends Model
 {
     protected $fillable = [
         'booth_name',
+        'created_group',
         'booth_content',
         'booth_image'
     ];

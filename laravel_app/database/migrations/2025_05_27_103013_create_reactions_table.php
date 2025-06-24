@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('reaction_name');
             $table->text('reaction_image');
-            $table->enum('reaction_type', ['face','nature','food','activity','travel','object','symbol']);
+            $table->enum('reaction_type', ['face','nature','food','activity','travel','object','symbol','original']);
             $table->timestamps();
         });
     }

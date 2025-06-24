@@ -58,6 +58,10 @@ class User extends Authenticatable
         return $this->hasMany(Pointlog::class);
     }
     
+    public function point_sessions()
+    {
+        return $this->hasMany(PointSession::class);
+    }
     public function genres()
     {
         return $this->belongsToMany(Genre::class);
