@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class RuleImageFile extends Model
 {
     //
-    protected $table = [
+    protected $fillable = [
         'game_id',
         'rule_image_path'
     ];

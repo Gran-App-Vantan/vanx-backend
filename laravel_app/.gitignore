@@ -5,6 +5,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+# !storage/app/public/reactions/
+!storage/app/public/user_icon/default_icon.png
 /vendor
 .env
 .env.backup
@@ -21,4 +23,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-/mysql_data
+mysql_data/
+emojis_temp/
+

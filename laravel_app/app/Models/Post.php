@@ -14,12 +14,28 @@ class Post extends Model
         'post_content'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function files()
+    {
+        return $this->hasMany(PostFile::class);
+    }
+
     public function postfile()
     {
         return $this->hasMany(PostFile::class);
     }
-    public function used_reactions()
+
+    public function post_reactions()
     {
-        return $this->hasMany(UserReactionPost::class);
+        return $this->hasMany(PostReaction::class);
+    }
+
+    public function reactions()
+    {
+        return $this->hasMany(PostReaction::class);
     }
 }

@@ -15,8 +15,8 @@ class Reaction extends Model
         'reaction_type'
     ];
 
-    public function used_reactions()
+    public function post_reactions()
     {
-        return $this->hasMany(UserReactionPost::class);
+        return $this->hasMany(PostReaction::class);
     }
 }
