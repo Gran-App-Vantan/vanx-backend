@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('points', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->unique();
-            $table->integer('point');
+            $table->integer('point')->default(1000);
             $table->timestamps();
         });
     }

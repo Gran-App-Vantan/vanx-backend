@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PointLog extends Model
 {
     //
-    protected $table = [
+    protected $fillable = [
         'user_id',
         'service_name',
         'description',

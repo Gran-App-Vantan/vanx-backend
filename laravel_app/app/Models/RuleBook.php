@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class RuleBook extends Model
 {
     //
-    protected $table = [
+    protected $fillable = [
         'game_name',
         'rule_content'
     ];
