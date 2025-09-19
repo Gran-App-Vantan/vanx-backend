@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Point;
 use App\Models\PointLog;
+use App\Http\Requests\AccountRequest;
 
 class AccountController extends Controller
 {
@@ -29,37 +30,25 @@ class AccountController extends Controller
             'messages' => ['IDまたはパスワードが正しくありません。'],
         ], 401);
     }
-    public function register(Request $request)
+    public function register(AccountRequest $request)
     {
-        // バリデーションルールの定義
-        $rules = [
-            'auth.name' => 'required|string|max:255',
-            'auth.user_path' => 'required|string|max:50|unique:users,user_path',
-            'auth.password' => 'required|string|min:8',
-            'auth.checked_password' => 'required|string|same:auth.password',
-            'auth.user_job' => 'required|string|in:player,coach,scout,media,supporter,other',
-        ];
-
-        // バリデーション実行
-        $validated = $request->validate($rules);
-
+        
+        $validated = $request->validated();
         try {
-            // ユーザー作成
             $user = User::create([
                 'name' => $validated['auth']['name'],
-                'user_path' => $validated['auth']['user_path'], // リクエストから受け取ったuser_pathを使用
+                'user_path' => $validated['auth']['user_path'],
                 'password' => Hash::make($validated['auth']['password']),
-                'user_job' => $validated['auth']['user_job'],
+                'user_job' => 'player',
                 'user_icon' => 'default_icon.png',
             ]);
 
-            // ポイントレコード作成
-            $point = new Point();
-            $point->user_id = $user->id;
-            $point->point = 0;
-            $point->save();
+            // ゲーム参加の時のこの機能は実装
+            // $point = new Point();
+            // $point->user_id = $user->id;
+            // $point->point = 0;
+            // $point->save();
 
-            // 認証トークン発行
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
@@ -73,12 +62,11 @@ class AccountController extends Controller
                     'user_job' => $user->user_job,
                 ]
             ]);
-
         } catch (\Exception $e) {
             \Log::error('Registration failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'messages' => ['ユーザー登録に失敗しました'],
+                'messages' => $validated->errors()->toArray(),
                 'error' => $e->getMessage()
             ], 500);
         }
