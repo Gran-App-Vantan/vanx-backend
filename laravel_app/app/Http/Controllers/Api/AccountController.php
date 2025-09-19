@@ -10,19 +10,21 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Point;
 use App\Models\PointLog;
-use App\Http\Requests\AccountRequest;
+use App\Http\Requests\AuthSignUpRequest;
+use App\Http\Requests\AuthLoginRequest;
 
 class AccountController extends Controller
 {
     //
-    public function login(Request $request){
-        $auth = $request["auth"];
-        if (Auth::attempt(['user_path' => $auth['user_path'], 'password' => $auth['password']])) {
-            $authUser = request()->user();
+    public function login(AuthLoginRequest $request){
+        $user_path = $request->input('user_path');
+        $password = $request->input('password');
+        if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
+            $authUser = $request->user();
             return response()->json([
                 'success' => true,
                 'messages' => ['ログインに成功しました。'],
-                'authToken' => $authUser->createToken('authToken')->plainTextToken,
+                'authToken' => $authUser->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken,
             ]);
         }
         return response()->json([
@@ -30,46 +32,32 @@ class AccountController extends Controller
             'messages' => ['IDまたはパスワードが正しくありません。'],
         ], 401);
     }
-    public function register(AccountRequest $request)
+    public function register(AuthSignUpRequest $request)
     {
         
         $validated = $request->validated();
-        try {
-            $user = User::create([
-                'name' => $validated['auth']['name'],
-                'user_path' => $validated['auth']['user_path'],
-                'password' => Hash::make($validated['auth']['password']),
-                'user_job' => 'player',
-                'user_icon' => 'default_icon.png',
-            ]);
+        $user = $validated['user'];
+        $user = User::create([
+            'name' => $user['name'],
+            'user_path' => $user['user_path'],
+            'password' => Hash::make($user['password']),
+            'user_job' => 'player',
+            'user_icon' => 'default_icon.png',
+        ]);
 
-            // ゲーム参加の時のこの機能は実装
-            // $point = new Point();
-            // $point->user_id = $user->id;
-            // $point->point = 0;
-            // $point->save();
+        $token = $user->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken;
 
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'messages' => ['ユーザー登録が完了しました'],
-                'authToken' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'user_path' => $user->user_path,
-                    'user_job' => $user->user_job,
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Registration failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'messages' => $validated->errors()->toArray(),
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'messages' => ['ユーザー登録が完了しました'],
+            'authToken' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_path' => $user->user_path,
+                'user_job' => $user->user_job,
+            ]
+        ]);
     }
     public function update(Request $request){
         $user = $request->user();
