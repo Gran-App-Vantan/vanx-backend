@@ -111,7 +111,7 @@ class AccountController extends Controller
         $user = User::with(['points', 'posts.postfile'])->findOrFail($id);
         $posts = $user->posts;
 
-        $user->makeHidden(['password', 'remember_token','posts']);
+        $user->makeHidden(['password', 'remember_token','user_path','posts']);
 
         $user->point = $user->points->point ?? 0;
         unset($user->points); 
@@ -159,12 +159,29 @@ class AccountController extends Controller
         ]);
     }
     public function ranking(Request $request){
-        $users = User::all();
+        $users = User::where('user_job', 'player')
+            ->leftJoin('points', 'users.id', '=', 'points.user_id')
+            ->orderByDesc('points.point')
+            ->select('users.*') // usersテーブルの全カラムを選択
+            ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
+            ->get();
+
+        $my_account = $request->user()->only('id','name','user_icon');
+        $my_account['point'] = $request->user()->points->point;
+        
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                'users' => $users
+                'my_account' => $my_account,
+                'users' => $users->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'user_icon' => $user->user_icon,
+                        'point' => $user->points->point ?? 0,
+                    ];
+                })
             ]
         ]); 
     }
