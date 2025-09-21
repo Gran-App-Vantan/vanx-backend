@@ -12,6 +12,7 @@ use App\Models\Point;
 use App\Models\PointLog;
 use App\Http\Requests\AuthSignUpRequest;
 use App\Http\Requests\AuthLoginRequest;
+use App\Http\Requests\AccountUpdateRequest;
 
 class AccountController extends Controller
 {
@@ -19,7 +20,7 @@ class AccountController extends Controller
     public function login(AuthLoginRequest $request){
         $user_path = $request->input('user_path');
         $password = $request->input('password');
-        if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
+        if (Auth::attempt(['user_path' => $user_path, 'password' => $password . 'junpeichan'])) {
             $authUser = $request->user();
             return response()->json([
                 'success' => true,
@@ -40,7 +41,7 @@ class AccountController extends Controller
         $user = User::create([
             'name' => $user['name'],
             'user_path' => $user['user_path'],
-            'password' => Hash::make($user['password']),
+            'password' => Hash::make($user['password'].'junpeichan'),
             'user_job' => 'player',
             'user_icon' => 'default_icon.png',
         ]);
@@ -52,86 +53,52 @@ class AccountController extends Controller
             'messages' => ['ユーザー登録が完了しました'],
             'authToken' => $token,
             'user' => [
-                'id' => $user->id,
+                'id' => $user->id, 
                 'name' => $user->name,
                 'user_path' => $user->user_path,
                 'user_job' => $user->user_job,
             ]
         ]);
     }
-    public function update(Request $request){
+    public function update(AccountUpdateRequest $request){
         $user = $request->user();
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "user_path" => $request->input('user_path', "") ?: $user->user_path
+            "user_path" => $request->input('user_path') ?: $user->user_path
         ];
-        if ($request->hasFile('user_icon')) {
-            try {
-                // ファイルのMIMEタイプを確認
-                $mimeType = $request->file('user_icon')->getMimeType();
-
-                // パブリックディスクを使用してファイルを保存
-                $filename = 'user_icon' . $user->id . '.png';
-                $path = Storage::disk('public')->put(
-                    'user_icons/' . $filename,
-                    file_get_contents($request->file('user_icon'))
-                );
-
-                if (!$path) {
-                    throw new \Exception('ファイルの保存に失敗しました');
-                }
-
-                $updateData["user_icon"] = "user_icons/" . $filename;
-
-                // デバッグ用のログ
-                \Log::info("File uploaded successfully:", [
-                    'path' => $path,
-                    'filename' => "user_icon{$user->id}.png",
-                    'original_name' => $request->file('user_icon')->getClientOriginalName(),
-                    'mime_type' => $mimeType
-                ]);
-            } catch (\Exception $e) {
-                \Log::error("File upload failed:", [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id,
-                    'file_size' => $request->file('user_icon')->getSize()
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'アイコンのアップロードに失敗しました',
-                    'message' => $e->getMessage(),
-                    'code' => 'UPLOAD_ERROR'
-                ], 400);
+        
+        // $_FILES変数がセットされ、アップロードにエラーがないかを確認
+        if (isset($_FILES['user_icon']) && $_FILES['user_icon']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['user_icon'];
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION); // 修正: $file['name']
+            $filename = 'user_icon_' . $user->id . '.' . $extension;
+            $path = $file['tmp_name']; // 修正: $file['tmp_name']
+            
+            // ファイルの保存先ディレクトリが存在するか確認し、なければ作成
+            $destinationDir = public_path('storage/user_icons/');
+            if (!file_exists($destinationDir)) {
+                mkdir($destinationDir, 0777, true);
+            }
+            
+            // ファイルを移動
+            if (move_uploaded_file($path, $destinationDir . $filename)) {
+                $updateData['user_icon'] = 'storage/user_icons/' . $filename;
             }
         }
-
-        try {
-            $user->update($updateData);
-            return response()->json([
-                'success' => true,
-                'message' => '更新に成功しました',
-                'data' => [
-                    'user' => [
-                        'name' => $user->name,
-                        'user_path' => $user->user_path,
-                        'user_icon' => $user->user_icon
-                    ]
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error("User update failed:", [
-                'error' => $e->getMessage(),
-                'user_id' => $user->id
-            ]);
-            return response()->json([
-                'success' => false,
-                'error' => 'ユーザー情報の更新に失敗しました',
-                'message' => $e->getMessage(),
-                'code' => 'UPDATE_ERROR'
-            ], 400);
-        }
+        
+        $user->update($updateData);
+        return response()->json([
+            'success' => true,
+            'messages' => ['更新に成功しました'],
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_path' => $user->user_path,
+                'user_icon' => $user->user_icon
+            ]
+        ]);
     }
-    public function profile($id)
+    public function profile(Request $request, $id)
     {
         $user = User::with('points')->findOrFail($id);
         

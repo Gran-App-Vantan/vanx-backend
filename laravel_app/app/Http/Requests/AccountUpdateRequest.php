@@ -3,17 +3,17 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
-class AuthLoginRequest extends FormRequest
+class AccountUpdateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true;
+        return auth()->check();
     }
 
     /**
@@ -24,19 +24,23 @@ class AuthLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_path' => 'required|string|max:8|exists:users,user_path',
-            'password' => 'required|string|min:8|max:16',
+            'name' => 'string|min:1|max:32',
+            'user_path' => 'string|max:8|unique:users,user_path|regex:/^[a-zA-Z0-9@_-]+$/',
+            'user_icon' => 'image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
         ];
+
     }
     public function messages(): array
     {
         return [
-            'user_path.required' => 'ユーザーIDが必須です',
-            'user_path.exists' => '指定されたユーザーIDは存在しません',
+            'name.min' => '名前は1文字以上で入力してください',
+            'name.max' => '名前は32文字以下で入力してください',
             'user_path.max' => 'ユーザーIDは8文字以下で入力してください',
-            'password.required' => 'パスワードが必須です',
-            'password.min' => 'パスワードは8文字以上で入力してください',
-            'password.max' => 'パスワードは16文字以下で入力してください',
+            'user_path.unique' => 'ユーザーIDは既に使用されています',
+            'user_path.regex' => 'ユーザーIDは半角英数字と@,-,_のみ使用できます',
+            'user_icon.image' => 'アイコンは画像ファイルで入力してください',
+            'user_icon.mimes' => 'アイコンはpng、jpeg、jpg、gif、svg、webp形式で入力してください',
+            'user_icon.max' => 'アイコンは5MB以下で入力してください',
         ];
     }
     public function failedValidation(Validator $validator)

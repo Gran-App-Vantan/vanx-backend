@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
     Route::prefix('account')->group(function () {
-        Route::put('/update', [AccountController::class,'update']);
+        Route::post('/update', [AccountController::class,'update']);
         Route::prefix('wallet')->group(function () {
             Route::get('/get', [AccountController::class,'wallet']);
             Route::put('/update', [AccountController::class,'wallet_update']);
