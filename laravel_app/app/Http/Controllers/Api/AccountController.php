@@ -20,7 +20,7 @@ class AccountController extends Controller
     public function login(AuthLoginRequest $request){
         $user_path = $request->input('user_path');
         $password = $request->input('password');
-        if (Auth::attempt(['user_path' => $user_path, 'password' => $password . 'junpeichan'])) {
+        if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
             $authUser = $request->user();
             return response()->json([
                 'success' => true,
@@ -48,7 +48,7 @@ class AccountController extends Controller
         $user = User::create([
             'name' => $user['name'],
             'user_path' => $user_path,
-            'password' => Hash::make($user['password'].'junpeichan'),
+            'password' => Hash::make($user['password']),
             'user_job' => 'player',
             'user_icon' => 'default_icon.png',
         ]);
@@ -108,38 +108,22 @@ class AccountController extends Controller
     }
     public function profile(Request $request, $id)
     {
-        $user = User::with('points')->findOrFail($id);
-        
-        $response = [
+        $user = User::with(['points', 'posts.postfile'])->findOrFail($id);
+        $posts = $user->posts;
+
+        $user->makeHidden(['password', 'remember_token','posts']);
+
+        $user->point = $user->points->point ?? 0;
+        unset($user->points); 
+
+        return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'user_path' => $user->user_path,
-                    'user_job' => $user->user_job,
-                    'user_icon' => $user->user_icon,
-                    'created_at' => $user->created_at,
-                    'updated_at' => $user->updated_at,
-                ],
-                'point' => null
+                'user' => $user,
+                'posts' => $posts
             ]
-        ];
-
-        // ポイント情報が存在する場合のみ追加
-        if ($user->points && $user->points->isNotEmpty()) {
-            $point = $user->points->first();
-            $response['data']['point'] = [
-                'id' => $point->id,
-                'user_id' => $point->user_id,
-                'point_balance' => $point->point_balance,
-                'created_at' => $point->created_at,
-                'updated_at' => $point->updated_at,
-            ];
-        }
-
-        return response()->json($response);
+        ]);
     }
     public function wallet(Request $request)
     {
