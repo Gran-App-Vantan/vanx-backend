@@ -52,6 +52,9 @@ class AccountController extends Controller
             'user_job' => 'player',
             'user_icon' => 'default_icon.png',
         ]);
+        $user->points()->create([
+            'point' => 10000,
+        ]);
 
         $token = $user->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken;
 
@@ -74,20 +77,18 @@ class AccountController extends Controller
             "user_path" => $request->input('user_path') ?: $user->user_path
         ];
         
-        // $_FILES変数がセットされ、アップロードにエラーがないかを確認
+
         if (isset($_FILES['user_icon']) && $_FILES['user_icon']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['user_icon'];
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION); // 修正: $file['name']
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
             $filename = 'user_icon_' . $user->id . '.' . $extension;
-            $path = $file['tmp_name']; // 修正: $file['tmp_name']
+            $path = $file['tmp_name'];
             
-            // ファイルの保存先ディレクトリが存在するか確認し、なければ作成
             $destinationDir = public_path('storage/user_icons/');
             if (!file_exists($destinationDir)) {
                 mkdir($destinationDir, 0777, true);
             }
             
-            // ファイルを移動
             if (move_uploaded_file($path, $destinationDir . $filename)) {
                 $updateData['user_icon'] = 'storage/user_icons/' . $filename;
             }

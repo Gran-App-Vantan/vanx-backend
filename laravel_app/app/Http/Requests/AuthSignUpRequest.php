@@ -25,8 +25,7 @@ class AuthSignUpRequest extends FormRequest
     {
         return [
             'user.name' => 'required|string|min:1|max:32',
-            'user.password' => 'required|string|min:8|max:16',
-            'user.checked_password' => 'required|string|same:user.password',
+            'user.password' => 'required|string|min:8|max:16'
         ];
     }
 
@@ -39,8 +38,6 @@ class AuthSignUpRequest extends FormRequest
             'user.password.required' => 'パスワードは必須です',
             'user.password.min' => 'パスワードは8文字以上で入力してください',
             'user.password.max' => 'パスワードは16文字以下で入力してください',
-            'user.checked_password.required' => '確認用のパスワードが必須です',
-            'user.checked_password.same' => 'パスワードが一致しません',
         ];
     }
 
