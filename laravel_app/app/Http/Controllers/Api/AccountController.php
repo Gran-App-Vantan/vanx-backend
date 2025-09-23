@@ -13,6 +13,7 @@ use App\Models\PointLog;
 use App\Http\Requests\AuthSignUpRequest;
 use App\Http\Requests\AuthLoginRequest;
 use App\Http\Requests\AccountUpdateRequest;
+use App\Http\Requests\WalletFillterRequest;
 
 class AccountController extends Controller
 {
@@ -125,15 +126,26 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function wallet(Request $request)
+    public function wallet(WalletFillterRequest $request)
     {
-        $user = $request->user();
-        $point = Point::where('user_id', $user->id)->first();
+        $user = $request->user()->load('points');
+        $user = $user->only('id', 'name', 'user_icon');
+        $user['point'] = $request->user()->points->point;
+        if ($request->input('filter') == "all") {
+            $pointlogs = $request->user()->pointlogs->toArray();
+        } else if ($request->input('filter') == "plus") {
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->get()->toArray();
+        } else if ($request->input('filter') == "minus") {
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->get()->toArray();
+        }
+
+
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                'point' => $point->point
+                'user' => $user,
+                'pointlogs' => $pointlogs
             ]
         ]);
     }
@@ -166,9 +178,10 @@ class AccountController extends Controller
             ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
             ->get();
 
-        $my_account = $request->user()->only('id','name','user_icon');
+        $my_account = $request->user()->load('points');
+        $my_account = $my_account->only('id', 'name', 'user_icon');
         $my_account['point'] = $request->user()->points->point;
-        
+
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
@@ -181,7 +194,7 @@ class AccountController extends Controller
                         'user_icon' => $user->user_icon,
                         'point' => $user->points->point ?? 0,
                     ];
-                })
+                })  
             ]
         ]); 
     }
