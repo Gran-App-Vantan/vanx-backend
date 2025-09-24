@@ -19,21 +19,22 @@ class AccountController extends Controller
 {
     //
     public function login(AuthLoginRequest $request){
-        $user_path = $request->input('user_path');
-        $password = $request->input('password');
-        if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
-            $authUser = $request->user();
-            return response()->json([
-                'success' => true,
-                'messages' => ['ログインに成功しました。'],
-                'authToken' => $authUser->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken,
-            ]);
-        }
+    $validated = $request->validated();
+    $name = $validated['user']['name'];
+    $password = $validated['user']['password'];
+    if (Auth::attempt(['name' => $name, 'password' => $password])) {
+        $authUser = Auth::user();
         return response()->json([
-            'success' => false,
-            'messages' => ['IDまたはパスワードが正しくありません。'],
-        ], 401);
+            'success' => true,
+            'messages' => ['ログインに成功しました。'],
+            'authToken' => $authUser->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken,
+        ]);
     }
+    return response()->json([
+        'success' => false,
+        'messages' => ['IDまたはパスワードが正しくありません。'],
+    ], 401);
+}
     public function register(AuthSignUpRequest $request)
     {
         $user_paths = User::all()->pluck('user_path')->toArray();

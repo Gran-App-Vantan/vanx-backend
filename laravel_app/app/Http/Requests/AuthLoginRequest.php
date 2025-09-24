@@ -24,19 +24,19 @@ class AuthLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_path' => 'required|string|max:8|exists:users,user_path',
-            'password' => 'required|string|min:8|max:16',
+            'user.name' => 'required|string|min:1|max:32',
+            'user.password' => 'required|string|min:8|max:16',
         ];
     }
     public function messages(): array
     {
         return [
-            'user_path.required' => 'ユーザーIDが必須です',
-            'user_path.exists' => '指定されたユーザーIDは存在しません',
-            'user_path.max' => 'ユーザーIDは8文字以下で入力してください',
-            'password.required' => 'パスワードが必須です',
-            'password.min' => 'パスワードは8文字以上で入力してください',
-            'password.max' => 'パスワードは16文字以下で入力してください',
+            'user.name.required' => '名前は必須です',
+            'user.name.exists' => '指定された名前は存在しません',
+            'user.name.max' => '名前は32文字以下で入力してください',
+            'user.password.required' => 'パスワードが必須です',
+            'user.password.min' => 'パスワードは8文字以上で入力してください',
+            'user.password.max' => 'パスワードは16文字以下で入力してください',
         ];
     }
     public function failedValidation(Validator $validator)
