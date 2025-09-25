@@ -76,26 +76,9 @@ class AccountController extends Controller
         $user = $request->user();
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "user_path" => $request->input('user_path') ?: $user->user_path
+            "user_path" => $request->input('user_path') ?: $user->user_path,
+            "user_icon" => $request->hasFile('user_icon') ? $request->file('user_icon')->storePublicly('user_icons','public') : $user->user_icon
         ];
-        
-
-        if (isset($_FILES['user_icon']) && $_FILES['user_icon']['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['user_icon'];
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = 'user_icon_' . $user->id . '.' . $extension;
-            $path = $file['tmp_name'];
-            
-            $destinationDir = public_path('storage/user_icons/');
-            if (!file_exists($destinationDir)) {
-                mkdir($destinationDir, 0777, true);
-            }
-            
-            if (move_uploaded_file($path, $destinationDir . $filename)) {
-                $updateData['user_icon'] = 'storage/user_icons/' . $filename;
-            }
-        }
-        
         $user->update($updateData);
         return response()->json([
             'success' => true,
