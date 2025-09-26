@@ -70,7 +70,7 @@ class PostController extends Controller
                     // 既存のpostfileリレーションを使用
                     $post->postfile()->create([
                         'post_file_path' => $path,
-                        'file_type' => $file->getClientMimeType(),
+                        'post_file_type' => str_starts_with($file->getClientMimeType(), 'video/') ? 'video' : 'image',
                         'file_size' => $file->getSize(),
                     ]);
                 }
