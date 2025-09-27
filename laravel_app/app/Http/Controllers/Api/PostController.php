@@ -13,9 +13,10 @@ class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $posts = Post::with(['user', 'postfile', 'post_reactions'])
+        $posts = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+
 
         return response()->json([
             'success' => true,
