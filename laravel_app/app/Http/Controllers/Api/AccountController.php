@@ -14,6 +14,7 @@ use App\Http\Requests\AuthSignUpRequest;
 use App\Http\Requests\AuthLoginRequest;
 use App\Http\Requests\AccountUpdateRequest;
 use App\Http\Requests\WalletFillterRequest;
+use App\Http\Requests\WalletUpdateRequest;
 
 class AccountController extends Controller
 {
@@ -133,25 +134,23 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function wallet_update(Request $request){
+    public function wallet_update(WalletUpdateRequest $request){
+        //設計の改善の必要あり、ブランチを変更して作成します。
         $user = $request->user();
-        $point = Point::where('user_id', $user->id)->first();
+        $point = $user->points;
         $point->update([
-            'point' => $point->point + $request['point'],
+            'point' => $point->point + $request->input('point'),
         ]);
-        PointLog::create([
+        $user->pointlogs()->create([
             'user_id' => $user->id,
-            'point_amount' => $request['point'],
-            'service_name' => $request['service_name'],
-            'description' => $request['description'],
-            'type' => $request['type'],
+            'point_amount' => $request->input('point'),
+            'service_name' => $request->input('service_name'),
+            'description' => $request->input('description'),
+            'type' => $request->input('type'),
         ]);
         return response()->json([
             'success' => true,
             'message' => '更新に成功しました',
-            'data' => [
-                'point' => $point->point
-            ]
         ]);
     }
     public function ranking(Request $request){
