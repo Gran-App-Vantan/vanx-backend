@@ -21,9 +21,9 @@ class AccountController extends Controller
     //
     public function login(AuthLoginRequest $request){
     $validated = $request->validated();
-    $name = $validated['user']['name'];
+    $user_path = $validated['user']['user_path'];
     $password = $validated['user']['password'];
-    if (Auth::attempt(['name' => $name, 'password' => $password])) {
+    if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
         $authUser = Auth::user();
         return response()->json([
             'success' => true,
