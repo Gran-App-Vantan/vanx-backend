@@ -15,8 +15,7 @@ class PostController extends Controller
     {
         $posts = Post::with(['user', 'postfile', 'post_reactions'])
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            ->paginate(10);
 
         return response()->json([
             'success' => true,
@@ -34,8 +33,7 @@ class PostController extends Controller
         $posts = Post::where('id', '<', $lastPostId)
             ->with(['user', 'postfile', 'post_reactions']) // リレーションをロード
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            ->paginate(10);
 
         return response()->json([
             'success' => true,
