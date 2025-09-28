@@ -35,12 +35,12 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     Route::prefix('post')->group(function () {
-            Route::get('/post/{id}', [PostController::class,'show']);
+            Route::get('/focus/{id}', [PostController::class,'show']);
             Route::post('/post', [PostController::class,'store']);
-            Route::delete('/post/{id}', [PostController::class,'delete']);
+            Route::delete('/delete/{id}', [PostController::class,'delete']);
             
-            Route::prefix('reaction_ops')->group(function () {
-                Route::delete('/{id}', [PostController::class,'reaction_ops']);
+            Route::prefix('reaction')->group(function () {
+                Route::delete('/{id}', [PostController::class,'reaction']);
             });
     });
 

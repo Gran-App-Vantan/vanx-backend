@@ -15,10 +15,10 @@ class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $posts = Post::with(['user', 'postfile', 'post_reactions'])
+        $posts = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions'])
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            ->paginate(10);
+
 
         return response()->json([
             'success' => true,
@@ -36,8 +36,7 @@ class PostController extends Controller
         $posts = Post::where('id', '<', $lastPostId)
             ->with(['user', 'postfile', 'post_reactions']) // リレーションをロード
             ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            ->paginate(10);
 
         return response()->json([
             'success' => true,

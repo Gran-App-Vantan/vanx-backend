@@ -3,17 +3,17 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
-class AuthLoginRequest extends FormRequest
+class WalletUpdateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true;
+        return auth()->check();
     }
 
     /**
@@ -24,19 +24,21 @@ class AuthLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user.user_path' => 'required|string|min:1|max:8|exists:users,user_path',
-            'user.password' => 'required|string|min:8|max:16',
+            'point' => 'required|numeric',
+            'service_name' => 'required|string',
+            'description' => 'required|string',
+            'type' => 'required|string|in:get,use,import,export,expire',
         ];
     }
     public function messages(): array
     {
         return [
-            'user.user_path.required' => 'パスは必須です',
-            'user.user_path.exists' => '指定されたパスは存在しません',
-            'user.user_path.max' => 'パスは8文字以下で入力してください',
-            'user.password.required' => 'パスワードが必須です',
-            'user.password.min' => 'パスワードは8文字以上で入力してください',
-            'user.password.max' => 'パスワードは16文字以下で入力してください',
+            'point.required' => 'ポイントは必須です',
+            'point.numeric' => 'ポイントは数値で入力してください',
+            'service_name.required' => 'サービス名は必須です',
+            'description.required' => '説明は必須です',
+            'type.required' => 'タイプは必須です',
+            'type.in' => 'タイプはget,use,import,export,expireのいずれかで入力してください',
         ];
     }
     public function failedValidation(Validator $validator)
