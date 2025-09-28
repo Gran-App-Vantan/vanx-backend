@@ -24,16 +24,16 @@ class AuthLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user.user_path' => 'required|string|min:1|max:8|exists:users,user_path',
+            'user.name' => 'required|string|min:1|max:32|exists:users,name',
             'user.password' => 'required|string|min:8|max:16',
         ];
     }
     public function messages(): array
     {
         return [
-            'user.user_path.required' => 'パスは必須です',
-            'user.user_path.exists' => '指定されたパスは存在しません',
-            'user.user_path.max' => 'パスは8文字以下で入力してください',
+            'user.name.required' => '名前は必須です',
+            'user.name.max' => '名前は32文字以下で入力してください',
+            'user.name.exists' => '指定された名前は存在しません',
             'user.password.required' => 'パスワードが必須です',
             'user.password.min' => 'パスワードは8文字以上で入力してください',
             'user.password.max' => 'パスワードは16文字以下で入力してください',

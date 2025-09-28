@@ -21,9 +21,9 @@ class AccountController extends Controller
     //
     public function login(AuthLoginRequest $request){
     $validated = $request->validated();
-    $user_path = $validated['user']['user_path'];
+    $user_name = $validated['user']['name'];
     $password = $validated['user']['password'];
-    if (Auth::attempt(['user_path' => $user_path, 'password' => $password])) {
+    if (Auth::attempt(['name' => $user_name, 'password' => $password])) {
         $authUser = Auth::user();
         return response()->json([
             'success' => true,
@@ -33,7 +33,7 @@ class AccountController extends Controller
     }
     return response()->json([
         'success' => false,
-        'messages' => ['IDまたはパスワードが正しくありません。'],
+        'messages' => ['名前またはパスワードが正しくありません。'],
     ], 401);
 }
     public function register(AuthSignUpRequest $request)

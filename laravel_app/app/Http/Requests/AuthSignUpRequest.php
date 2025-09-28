@@ -24,7 +24,7 @@ class AuthSignUpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user.name' => 'required|string|min:1|max:32',
+            'user.name' => 'required|string|min:1|max:32|unique:users,name',
             'user.password' => 'required|string|min:8|max:16'
         ];
     }
@@ -35,6 +35,7 @@ class AuthSignUpRequest extends FormRequest
             'user.name.required' => '名前は必須です',
             'user.name.min' => '名前は1文字以上で入力してください',
             'user.name.max' => '名前は32文字以下で入力してください',
+            'user.name.unique' => '名前は既に使用されています',
             'user.password.required' => 'パスワードは必須です',
             'user.password.min' => 'パスワードは8文字以上で入力してください',
             'user.password.max' => 'パスワードは16文字以下で入力してください',

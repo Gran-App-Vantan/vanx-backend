@@ -24,7 +24,7 @@ class AccountUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'string|min:1|max:32',
+            'name' => 'string|min:1|max:32|unique:users,name',
             'user_path' => 'string|max:8|unique:users,user_path|regex:/^[a-zA-Z0-9@_-]+$/',
             'user_icon' => 'image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
         ];
@@ -35,6 +35,7 @@ class AccountUpdateRequest extends FormRequest
         return [
             'name.min' => '名前は1文字以上で入力してください',
             'name.max' => '名前は32文字以下で入力してください',
+            'name.unique' => '名前は既に使用されています',
             'user_path.max' => 'ユーザーIDは8文字以下で入力してください',
             'user_path.unique' => 'ユーザーIDは既に使用されています',
             'user_path.regex' => 'ユーザーIDは半角英数字と@,-,_のみ使用できます',
