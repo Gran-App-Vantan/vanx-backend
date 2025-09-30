@@ -43,38 +43,30 @@ class PostController extends Controller
         ]);
     }
 
-    public function show(Request $request)
+    public function show(Request $request, $id)
     {
-        $lastPostId = $request->query('last_post_id', 0);
-
-        $posts = Post::where('id', '<', $lastPostId)
-            ->with(['user', 'postfile', 'post_reactions']) // リレーションをロード
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        // ファイルパスの処理（APIエンドポイント経由のURLを返す）
-        $posts->getCollection()->transform(function ($post) {
-            // 投稿ファイルのURLフィールドを追加
-            if ($post->postfile) {
-                $post->postfile->transform(function ($file) {
-                    // APIエンドポイント経由のURLを返す
-                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
-                    return $file;
-                });
-            }
-            
-            return $post;
-        });
-
+        // $postsは単一のPostモデルインスタンス
+        $post = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions'])
+            ->findOrFail($id);
+    
+        // 単一モデル内のリレーションを直接操作する
+        if ($post->postfile) {
+            $post->postfile->transform(function ($file) {
+                // ファイルのパスからAPI経由のURLを生成し、フィールドとして追加
+                $file->post_file_url = url('api/storage/' . $file->post_file_path);
+                return $file;
+            });
+        }
+    
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                'posts' => $posts
+                // 変数名を$postsから$postに変更すると、より意図が明確になります
+                'posts' => $post 
             ]
         ]);
     }
-
     public function store(Request $request)
     {
         // 詳細デバッグログ
