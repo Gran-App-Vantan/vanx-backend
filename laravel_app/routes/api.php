@@ -49,14 +49,22 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('floor_map', [BoothController::class,'floor_map']);
 Route::get('rule/{id}', [GameController::class,'game_rule']);
 
-Route::get('/storage/post_files/{filename}', function ($filename) {
-    $path = storage_path('app/public/post_files/' . $filename);
+Route::get('/storage/{path}', function ($path) {
+    // パスの正規化
+    $normalizedPath = ltrim($path, '/');
     
-    if (!file_exists($path)) {
+    // post_files/ プレフィックスがない場合は追加
+    if (!str_starts_with($normalizedPath, 'post_files/')) {
+        $normalizedPath = 'post_files/' . $normalizedPath;
+    }
+    
+    $fullPath = storage_path('app/public/' . $normalizedPath);
+    
+    if (!file_exists($fullPath)) {
         return response()->json(['error' => 'File not found'], 404);
     }
     
-    $extension = pathinfo($filename, PATHINFO_EXTENSION);
+    $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
     $contentType = match(strtolower($extension)) {
         'png' => 'image/png',
         'jpg', 'jpeg' => 'image/jpeg',
@@ -65,11 +73,12 @@ Route::get('/storage/post_files/{filename}', function ($filename) {
         'svg' => 'image/svg+xml',
         'mp4' => 'video/mp4',
         'mov' => 'video/quicktime',
+        'webm' => 'video/webm',
         default => 'application/octet-stream'
     };
 
-    return response()->file($path, [
+    return response()->file($fullPath, [
         'Content-Type' => $contentType,
         'Cache-Control' => 'public, max-age=31536000',
     ]);
-});
+})->where('path', '.*');
