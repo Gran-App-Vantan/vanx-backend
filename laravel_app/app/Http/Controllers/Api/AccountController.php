@@ -123,6 +123,19 @@ class AccountController extends Controller
             ]
         ]);
     }
+    public function me(Request $request)
+    {
+        $user = $request->user()->load('points');
+        $user = $user->only('id', 'name', 'user_icon');
+        $user['point'] = $request->user()->points->point;
+        return response()->json([
+            'success' => true,
+            'message' => '取得に成功しました',
+            'data' => [
+                'user' => $user
+            ]
+        ]);
+    }
     public function wallet(WalletFillterRequest $request)
     {
         $user = $request->user()->load('points');
