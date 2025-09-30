@@ -81,6 +81,7 @@ class AccountController extends Controller
             "user_icon" => $request->hasFile('user_icon') ? $request->file('user_icon')->storePublicly('user_icons','public') : $user->user_icon
         ];
         $user->update($updateData);
+        
         return response()->json([
             'success' => true,
             'messages' => ['更新に成功しました'],
@@ -101,6 +102,17 @@ class AccountController extends Controller
 
         $user->point = $user->points->point ?? 0;
         unset($user->points); 
+
+        // 投稿のファイルURLフィールドを追加
+        $posts->transform(function ($post) {
+            if ($post->postfile) {
+                $post->postfile->transform(function ($file) {
+                    $file->post_file_url = $file->post_file_path;
+                    return $file;
+                });
+            }
+            return $post;
+        });
 
         return response()->json([
             'success' => true,

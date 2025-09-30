@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\PostFile;
 use App\Models\PostReaction;
 use App\Models\Reaction;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,19 @@ class PostController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
+        // ファイルパスの処理（APIエンドポイント経由のURLを返す）
+        $posts->getCollection()->transform(function ($post) {
+            // 投稿ファイルのURLフィールドを追加
+            if ($post->postfile) {
+                $post->postfile->transform(function ($file) {
+                    // APIエンドポイント経由のURLを返す
+                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
+                    return $file;
+                });
+            }
+            
+            return $post;
+        });
 
         return response()->json([
             'success' => true,
@@ -38,6 +52,20 @@ class PostController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
+        // ファイルパスの処理（APIエンドポイント経由のURLを返す）
+        $posts->getCollection()->transform(function ($post) {
+            // 投稿ファイルのURLフィールドを追加
+            if ($post->postfile) {
+                $post->postfile->transform(function ($file) {
+                    // APIエンドポイント経由のURLを返す
+                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
+                    return $file;
+                });
+            }
+            
+            return $post;
+        });
+
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
@@ -49,8 +77,44 @@ class PostController extends Controller
 
     public function store(Request $request)
     {
+        // 詳細デバッグログ
+        Log::info('投稿作成リクエスト開始', [
+            'content' => $request->input('content'),
+            'has_files' => $request->hasFile('files'),
+            'files_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
+            'all_files' => $request->allFiles(),
+            'request_keys' => array_keys($request->all()),
+            'files_input' => $request->input('files'),
+            'request_method' => $request->method(),
+            'content_type' => $request->header('Content-Type'),
+        ]);
+
+        // ファイル存在とバリデーションの詳細ログ
+        $allFiles = $request->allFiles();
+        if (!empty($allFiles['files'])) {
+            Log::info('受信ファイル詳細', [
+                'files' => collect($allFiles['files'])->map(function($file, $index) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile) {
+                        return [
+                            'index' => $index,
+                            'name' => $file->getClientOriginalName(),
+                            'size' => $file->getSize(),
+                            'mime' => $file->getClientMimeType(),
+                            'valid' => $file->isValid(),
+                            'error' => $file->getError(),
+                            'error_message' => $file->getErrorMessage(),
+                        ];
+                    }
+                    return ['index' => $index, 'type' => gettype($file)];
+                })->toArray()
+            ]);
+        } else {
+            Log::info('ファイルなしまたは空');
+        }
+
         $validated = $request->validate([
             'content' => 'required|string|max:1000',
+            'files' => 'sometimes|array',
             'files.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi|max:51200',
         ]);
 
@@ -63,24 +127,52 @@ class PostController extends Controller
                 'post_content' => $validated['content'],
             ]);
 
+            Log::info('投稿作成完了', ['post_id' => $post->id]);
+
             // Handle file uploads if any
             if ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
-                    $path = $file->store('post_files', 'public');
-                    
-                    // 既存のpostfileリレーションを使用
-                    $post->postfile()->create([
-                        'post_file_path' => $path,
-                        'post_file_type' => str_starts_with($file->getClientMimeType(), 'video/') ? 'video' : 'image',
-                        'file_size' => $file->getSize(),
-                    ]);
+                $files = $request->file('files');
+                Log::info('ファイル処理開始', ['files_count' => count($files)]);
+
+                foreach ($files as $index => $file) {
+                    if ($file && $file->isValid()) {
+                        $path = $file->store('post_files', 'public');
+                        
+                        // PostFileモデルに直接保存
+                        $postFile = PostFile::create([
+                            'post_id' => $post->id,
+                            'post_file_path' => $path,
+                            'post_file_type' => str_starts_with($file->getClientMimeType(), 'video/') ? 'video' : 'image',
+                            'file_size' => $file->getSize(),
+                        ]);
+
+                        Log::info('ファイル保存完了', [
+                            'index' => $index,
+                            'post_file_id' => $postFile->id,
+                            'path' => $path,
+                            'type' => $file->getClientMimeType()
+                        ]);
+                    } else {
+                        Log::warning('無効なファイル', ['index' => $index]);
+                    }
                 }
+            } else {
+                Log::info('ファイルなし');
             }
 
             DB::commit();
 
             // 既存のリレーションを使用してデータをロード
             $post->load(['user', 'postfile', 'post_reactions']);
+
+            // 投稿ファイルのURLフィールドを追加
+            if ($post->postfile) {
+                $post->postfile->transform(function ($file) {
+                    // APIエンドポイント経由のURLを返す
+                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
+                    return $file;
+                });
+            }
 
             return response()->json([
                 'success' => true,
@@ -93,8 +185,8 @@ class PostController extends Controller
                         'created_at' => $post->created_at,
                         'updated_at' => $post->updated_at,
                         'user' => $post->user,
-                        'files' => $post->postfile,  // postfileリレーションを使用
-                        'reactions' => $post->post_reactions,  // post_reactionsリレーションを使用
+                        'postfile' => $post->postfile,  // postfileキーで統一
+                        'post_reactions' => $post->post_reactions,
                     ]
                 ]
             ], 201);
@@ -245,4 +337,6 @@ class PostController extends Controller
             ]
         ]);
     }
+
+
 }
