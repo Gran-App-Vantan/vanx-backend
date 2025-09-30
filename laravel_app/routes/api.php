@@ -48,3 +48,28 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('floor_map', [BoothController::class,'floor_map']);
 Route::get('rule/{id}', [GameController::class,'game_rule']);
+
+Route::get('/storage/post_files/{filename}', function ($filename) {
+    $path = storage_path('app/public/post_files/' . $filename);
+    
+    if (!file_exists($path)) {
+        return response()->json(['error' => 'File not found'], 404);
+    }
+    
+    $extension = pathinfo($filename, PATHINFO_EXTENSION);
+    $contentType = match(strtolower($extension)) {
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+        'mp4' => 'video/mp4',
+        'mov' => 'video/quicktime',
+        default => 'application/octet-stream'
+    };
+
+    return response()->file($path, [
+        'Content-Type' => $contentType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+});
