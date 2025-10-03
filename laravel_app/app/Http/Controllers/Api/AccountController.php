@@ -96,7 +96,15 @@ class AccountController extends Controller
     }
     public function profile(Request $request, $id)
     {
-        $user = User::with(['points', 'posts.postfile'])->findOrFail($id);
+        $user = User::with([
+            'points',
+            'posts' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            },
+            'posts.postfile',
+            'posts.post_reactions.reaction'
+        ])->findOrFail($id);
+        
         $posts = $user->posts;
 
         $user->makeHidden(['password', 'remember_token','user_path','posts']);
