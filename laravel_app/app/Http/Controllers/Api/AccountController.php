@@ -31,11 +31,12 @@ class AccountController extends Controller
             'authToken' => $authUser->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken,
         ]);
     }
-    return response()->json([
-        'success' => false,
-        'messages' => ['名前またはパスワードが正しくありません。'],
-    ], 401);
-}
+    return response()->json(
+        [
+            'success' => false,
+            'messages' => ['名前またはパスワードが正しくありません。'],
+        ], 401);
+    }
     public function register(AuthSignUpRequest $request)
     {
         $user_paths = User::all()->pluck('user_path')->toArray();

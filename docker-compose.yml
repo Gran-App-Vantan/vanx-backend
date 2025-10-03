@@ -3,6 +3,7 @@ services:
     build: ./
     volumes:
       - .:/workdir
+      - ./laravel_app/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     ports:
       - 8777:8000
 

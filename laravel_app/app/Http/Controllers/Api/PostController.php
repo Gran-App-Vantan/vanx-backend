@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Throwable;
 use App\Models\Post;
 use App\Models\PostFile;
 use App\Models\PostReaction;
@@ -11,12 +12,14 @@ use App\Models\Reaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Http\Requests\PostStoreRequest;
+use App\Services\PostFilesTypeSetService;
 
 class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $posts = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions'])
+        $posts = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions.reaction'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -46,7 +49,7 @@ class PostController extends Controller
     public function show(Request $request, $id)
     {
         // $postsは単一のPostモデルインスタンス
-        $post = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions'])
+        $post = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions.reaction'])
             ->findOrFail($id);
     
         // 単一モデル内のリレーションを直接操作する
@@ -67,132 +70,158 @@ class PostController extends Controller
             ]
         ]);
     }
-    public function store(Request $request)
+    public function store(PostStoreRequest $request)
     {
-        // 詳細デバッグログ
-        Log::info('投稿作成リクエスト開始', [
-            'content' => $request->input('content'),
-            'has_files' => $request->hasFile('files'),
-            'files_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
-            'all_files' => $request->allFiles(),
-            'request_keys' => array_keys($request->all()),
-            'files_input' => $request->input('files'),
-            'request_method' => $request->method(),
-            'content_type' => $request->header('Content-Type'),
-        ]);
-
-        // ファイル存在とバリデーションの詳細ログ
-        $allFiles = $request->allFiles();
-        if (!empty($allFiles['files'])) {
-            Log::info('受信ファイル詳細', [
-                'files' => collect($allFiles['files'])->map(function($file, $index) {
-                    if ($file instanceof \Illuminate\Http\UploadedFile) {
-                        return [
-                            'index' => $index,
-                            'name' => $file->getClientOriginalName(),
-                            'size' => $file->getSize(),
-                            'mime' => $file->getClientMimeType(),
-                            'valid' => $file->isValid(),
-                            'error' => $file->getError(),
-                            'error_message' => $file->getErrorMessage(),
-                        ];
-                    }
-                    return ['index' => $index, 'type' => gettype($file)];
-                })->toArray()
-            ]);
-        } else {
-            Log::info('ファイルなしまたは空');
-        }
-
-        $validated = $request->validate([
-            'content' => 'required|string|max:1000',
-            'files' => 'sometimes|array',
-            'files.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi|max:51200',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            // Create the post
-            $post = Post::create([
-                'user_id' => auth()->id(),
-                'post_content' => $validated['content'],
-            ]);
-
-            Log::info('投稿作成完了', ['post_id' => $post->id]);
-
-            // Handle file uploads if any
-            if ($request->hasFile('files')) {
-                $files = $request->file('files');
-                Log::info('ファイル処理開始', ['files_count' => count($files)]);
-
-                foreach ($files as $index => $file) {
-                    if ($file && $file->isValid()) {
-                        $path = $file->store('post_files', 'public');
-                        
-                        // PostFileモデルに直接保存
-                        $postFile = PostFile::create([
-                            'post_id' => $post->id,
-                            'post_file_path' => $path,
-                            'post_file_type' => str_starts_with($file->getClientMimeType(), 'video/') ? 'video' : 'image',
-                            'file_size' => $file->getSize(),
-                        ]);
-
-                        Log::info('ファイル保存完了', [
-                            'index' => $index,
-                            'post_file_id' => $postFile->id,
-                            'path' => $path,
-                            'type' => $file->getClientMimeType()
-                        ]);
-                    } else {
-                        Log::warning('無効なファイル', ['index' => $index]);
-                    }
+        // 1. ファイルアップロードとそのパスを、トランザクション開始前に完了させる
+        $uploadedFiles = [];
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                if ($file && $file->isValid()) {
+                    // ファイルオブジェクトと保存先パスをセットで保持
+                    $uploadedFiles[] = [
+                        'file' => $file,
+                        'path' => $file->store('post_files', 'public'), // ここで外部ストレージに保存
+                    ];
                 }
-            } else {
-                Log::info('ファイルなし');
             }
-
-            DB::commit();
-
-            // 既存のリレーションを使用してデータをロード
-            $post->load(['user', 'postfile', 'post_reactions']);
-
-            // 投稿ファイルのURLフィールドを追加
-            if ($post->postfile) {
-                $post->postfile->transform(function ($file) {
-                    // APIエンドポイント経由のURLを返す
-                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
-                    return $file;
-                });
+        }
+        
+        $uploadedPaths = array_column($uploadedFiles, 'path'); // 後でロールバック用にパスをリスト化
+        
+        try {
+            // 2. DBトランザクションを開始し、レコードの書き込みだけを行う
+            DB::beginTransaction();
+    
+            $post = Post::create([
+                'user_id' => $request->user()->id,
+                'post_content' => $request->validated()['content'],
+            ]);
+    
+            foreach ($uploadedFiles as $data) {
+                $file = $data['file'];
+                $path = $data['path'];
+                
+                $fileType = PostFilesTypeSetService::setType($file);
+                // 既にアップロード済みのパスをDBに記録
+                PostFile::create([
+                    'post_id' => $post->id,
+                    'post_file_path' => $path, 
+                    'post_file_type' => $fileType,
+                    'file_size' => $file->getSize(),
+                ]);
             }
-
+            
+            DB::commit(); // DB操作がすべて成功したらコミット
+    
+            // 3. 成功レスポンスの準備（コミット後）
+            $post->load('postfile');
             return response()->json([
                 'success' => true,
                 'message' => '投稿に成功しました',
-                'data' => [
-                    'post' => [
-                        'id' => $post->id,
-                        'user_id' => $post->user_id,
-                        'post_content' => $post->post_content,
-                        'created_at' => $post->created_at,
-                        'updated_at' => $post->updated_at,
-                        'user' => $post->user,
-                        'postfile' => $post->postfile,  // postfileキーで統一
-                        'post_reactions' => $post->post_reactions,
-                    ]
-                ]
+                'data' => $post
             ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Post creation failed: ' . $e->getMessage());
+    
+        } catch (Throwable $th) {
+            // 4. エラー発生時のクリーンアップ処理
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack(); // DBへの変更をロールバック
+            }
+    
+            // アップロードに成功していたファイルをすべて削除（ゴミファイル対策）
+            if (!empty($uploadedPaths)) {
+                Storage::disk('public')->delete($uploadedPaths);
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => '投稿に失敗しました',
-                'errors' => [$e->getMessage()]
+                'errors' => [$th->getMessage()]
             ], 500);
         }
     }
+// {
+//     Log::info('投稿作成リクエスト開始', [
+//         'content' => $request->input('content'),
+//         'has_files' => $request->hasFile('files'),
+//         'files_count' => $request->hasFile('files') ? count($request->file('files')) : 0,
+//         'all_files' => $request->allFiles(),
+//         'request_keys' => array_keys($request->all()),
+//         'files_input' => $request->input('files'),
+//         'request_method' => $request->method(),
+//         'content_type' => $request->header('Content-Type'),
+//     ]);
+// 
+//     // ファイル存在とバリデーションの詳細ログ
+//     $allFiles = $request->allFiles();
+//     if (!empty($allFiles['files'])) {
+//         Log::info('受信ファイル詳細', [
+//             'files' => collect($allFiles['files'])->map(function($file, $index) {
+//                 if ($file instanceof \Illuminate\Http\UploadedFile) {
+//                     return [
+//                         'index' => $index,
+//                         'name' => $file->getClientOriginalName(),
+//                         'size' => $file->getSize(),
+//                         'mime' => $file->getMimeType(),
+//                         'extension' => $file->getClientOriginalExtension(),
+//                     ];
+//                 }
+//                 return $file;
+//             })->toArray()
+//         ]);
+//     } else {
+//         Log::info('ファイルなしまたは空');
+//     }
+// 
+//     $validated = $request->validated();
+// 
+//     try {
+//         DB::beginTransaction();
+// 
+//         $post = new Post();
+//         $post->user_id = $request->user()->id;
+//         $post->content = $validated['content'];
+//         $post->save();
+// 
+//         // ファイルがアップロードされている場合
+//         if ($request->hasFile('files')) {
+//             $files = $request->file('files');
+// 
+//             foreach ($files as $file) {
+//                 // ファイルをストレージに保存
+//                 $path = $file->store('post_files', 'public');
+//                 
+//                 // ファイルタイプを判定
+//                 $fileType = str_starts_with($file->getMimeType(), 'video/') ? 'video' : 'image';
+// 
+//                 // ファイル情報をデータベースに保存
+//                 $postFile = new PostFile();
+//                 $postFile->post_id = $post->id;
+//                 $postFile->post_file_path = $path;
+//                 $postFile->post_file_type = $fileType;
+//                 $postFile->save();
+//             }
+//         }
+// 
+//         DB::commit();
+// 
+//         return response()->json([
+//             'success' => true,
+//             'message' => '投稿が作成されました',
+//             'data' => $post->load('postfile')
+//         ], 201);
+// 
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         Log::error('投稿作成エラー: ' . $e->getMessage(), [
+//             'trace' => $e->getTraceAsString()
+//         ]);
+//         return response()->json([
+//             'success' => false,
+//             'message' => '投稿に失敗しました',
+//             'errors' => [$e->getMessage()]
+//         ], 500);
+//     }
+// }
 
     public function delete(Request $request, $id) {
         // 認証チェック
