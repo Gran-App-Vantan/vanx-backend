@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Throwable;
 use App\Models\Post;
 use App\Models\PostFile;
@@ -12,6 +11,7 @@ use App\Models\Reaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 use App\Http\Requests\PostStoreRequest;
 use App\Services\PostFilesTypeSetService;
 
@@ -275,6 +275,4 @@ class PostController extends Controller
             ]
         ]);
     }
-
-
 }
