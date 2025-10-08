@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Http\Requests\PostStoreRequest;
+use App\Http\Requests\PostDeleteRequest;
 use App\Services\PostFilesTypeSetService;
 
 class PostController extends Controller
@@ -40,9 +41,7 @@ class PostController extends Controller
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
-            'data' => [
-                'posts' => $posts
-            ]
+            'posts' => $posts
         ]);
     }
 
@@ -140,95 +139,50 @@ class PostController extends Controller
         }
     }
 
-    public function delete(Request $request, $id) {
-        // 認証チェック
-        if (!auth()->check()) {
-            return response()->json([
-                'success' => false,
-                'message' => '認証が必要です'
-            ], 401);
-        }
+    public function delete(PostDeleteRequest $request, $id) 
+    {   
 
-        // 明示的にPostを取得
-        $post = Post::find($id);
-        if (!$post) {
-            return response()->json([
-                'success' => false,
-                'message' => '投稿が見つかりません'
-            ], 404);
-        }
-
-        // 削除リクエストのログ
-        Log::info('投稿削除リクエスト', [
-            'post_id' => $post->id,
-            'post_user_id' => $post->user_id,
-            'auth_user_id' => auth()->id()
-        ]);
+        // 削除された投稿のIDを事前に保持
+        $post = Post::findOrFail($id);
+        $deletedPostId = $post->id;
         
-        // user_idがnullまたは空の場合の特別処理
-        if (empty($post->user_id)) {
-            Log::error('投稿データが不正です - user_idが空', [
-                'post_id' => $post->id,
-                'post_user_id' => $post->user_id
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => '投稿データに問題があります'
-            ], 500);
-        }
-        
-        // 投稿の所有者のみが削除できるようにチェック（型安全な比較）
-        if ((int)$post->user_id !== (int)auth()->id()) {
-            Log::warning('Unauthorized delete attempt', [
-                'post_id' => $post->id,
-                'post_user_id' => $post->user_id,
-                'auth_user_id' => auth()->id()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => '投稿を削除する権限がありません'
-            ], 403);
-        }
-
-        Log::info('権限チェック通過 - 削除処理を開始', [
-            'post_id' => $post->id,
-            'user_id' => auth()->id()
-        ]);
-
         try {
-            DB::beginTransaction();
-
-            // 投稿に関連する物理ファイルを削除
-            $postFiles = $post->postfile;
-            foreach ($postFiles as $file) {
-                if ($file->post_file_path && Storage::disk('public')->exists($file->post_file_path)) {
-                    Storage::disk('public')->delete($file->post_file_path);
+            DB::transaction(function () use ($post) {
+                
+                foreach ($post->postfile as $file) {
+                    $path = $file->post_file_path;
+                    
+                    if ($path && Storage::disk('public')->exists($path)) {
+                        if (!Storage::disk('public')->delete($path)) {
+                            // 強制的に例外をスローし、DB::transaction を失敗させる
+                            throw new \Exception('ストレージからのファイルの削除に失敗しました。（ファイル権限の確認が必要かもしれません）'); 
+                        }
+                    }
                 }
-            }
-
-            // 投稿を削除（関連するpost_files、post_reactionsはcascadeで自動削除される）
-            $post->delete();
-
-            DB::commit();
-
+                
+                $post->delete(); 
+            }); // トランザクションが成功すれば commit
+            
             return response()->json([
                 'success' => true,
                 'message' => '投稿を削除しました',
                 'data' => [
-                    'deleted_post_id' => $post->id
+                    'deleted_post_id' => $deletedPostId
                 ]
             ]);
-
+    
         } catch (\Exception $e) {
-            DB::rollBack();
+            
             Log::error('Post deletion failed: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => '投稿の削除に失敗しました',
-                'errors' => [$e->getMessage()]
+                'errors' => [$e->getMessage()] 
             ], 500);
         }
     }
+    
 
     public function reaction_ops(Request $request, $post_id)
     {
