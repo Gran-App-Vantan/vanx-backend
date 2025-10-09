@@ -5,8 +5,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\BoothController;
 use App\Http\Controllers\Api\GameController;
+
 
 
 Route::prefix('account')->group(function () {
@@ -41,7 +43,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/delete/{id}', [PostController::class,'delete']);
             
             Route::prefix('reaction')->group(function () {
-                Route::delete('/{id}', [PostController::class,'reaction']);
+                Route::get('/get', [ReactionController::class,'reactions']);
+                Route::post('/{post_id}', [ReactionController::class,'reaction']);
             });
     });
 
