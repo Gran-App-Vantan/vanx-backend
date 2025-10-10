@@ -25,7 +25,7 @@ class AccountUpdateRequest extends FormRequest
     {
         return [
             'name' => 'string|min:1|max:32|unique:users,name',
-            'user_path' => 'string|max:8|unique:users,user_path|regex:/^[a-zA-Z0-9@_-]+$/',
+            'password' => 'string|min:8|max:32',
             'user_icon' => 'image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
         ];
 
@@ -36,9 +36,8 @@ class AccountUpdateRequest extends FormRequest
             'name.min' => '名前は1文字以上で入力してください',
             'name.max' => '名前は32文字以下で入力してください',
             'name.unique' => '名前は既に使用されています',
-            'user_path.max' => 'ユーザーIDは8文字以下で入力してください',
-            'user_path.unique' => 'ユーザーIDは既に使用されています',
-            'user_path.regex' => 'ユーザーIDは半角英数字と@,-,_のみ使用できます',
+            'password.min' => 'パスワードは8文字以上で入力してください',
+            'password.max' => 'パスワードは32文字以下で入力してください',
             'user_icon.image' => 'アイコンは画像ファイルで入力してください',
             'user_icon.mimes' => 'アイコンはpng、jpeg、jpg、gif、svg、webp形式で入力してください',
             'user_icon.max' => 'アイコンは5MB以下で入力してください',

@@ -78,7 +78,7 @@ class AccountController extends Controller
         $user = $request->user();
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "user_path" => $request->input('user_path') ?: $user->user_path,
+            "password" => Hash::make($request->input('password')) ?: $user->password,
             "user_icon" => $request->hasFile('user_icon') ? $request->file('user_icon')->storePublicly('user_icons','public') : $user->user_icon
         ];
         $user->update($updateData);
@@ -89,7 +89,6 @@ class AccountController extends Controller
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
-                'user_path' => $user->user_path,
                 'user_icon' => $user->user_icon
             ]
         ]);
