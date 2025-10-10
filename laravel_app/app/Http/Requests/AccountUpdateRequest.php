@@ -24,9 +24,9 @@ class AccountUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'string|min:1|max:32|unique:users,name',
-            'password' => 'string|min:8|max:32',
-            'user_icon' => 'image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
+            'name' => 'nullable|string|min:1|max:32|unique:users,name',
+            'password' => 'nullable|string|min:8|max:32',
+            'user_icon' => 'nullable|image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
         ];
 
     }
