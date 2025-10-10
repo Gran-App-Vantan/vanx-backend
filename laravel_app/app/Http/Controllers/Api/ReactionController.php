@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PostReaction;
 use App\Models\Reaction;
+use App\Models\Post;
 use App\Http\Requests\ReactionsGetRequest;
+use App\Http\Requests\ReactionRequest;
 
 class ReactionController extends Controller
 {
@@ -27,49 +29,40 @@ class ReactionController extends Controller
     }
 
 
-    public function reaction(Request $request, $post_id)
+    public function reaction(ReactionRequest $request, $post_id)
     {
-        $request->validate([
-            'reaction_id' => 'required|exists:reactions,id'
-        ]);
-
         $user = $request->user();
-        $reaction = Reaction::findOrFail($request->reaction_id);
-        
-        // Check if the user has already reacted with this reaction type
-        $existingReaction = PostReaction::where('post_id', $post_id)
-            ->where('user_id', $user->id)
-            ->where('reaction_id', $reaction->id)
-            ->first();
+        $reaction = $request->input('reaction_id');
+        $searchConditions = [
+            'post_id' => $post_id,
+            'user_id' => $user->id,
+            'reaction_id' => $reaction,
+        ];
 
-        if ($existingReaction) {
-            // Remove the reaction if it exists
-            $existingReaction->delete();
-            $message = 'リアクションを解除しました';
-            $isReacted = false;
-        } else {
-            // Add the reaction if it doesn't exist
-            PostReaction::create([
-                'post_id' => $post_id,
-                'user_id' => $user->id,
-                'reaction_id' => $reaction->id,
+        $reaction = PostReaction::firstOrCreate($searchConditions);
+        if ($reaction->wasRecentlyCreated) {
+            $total_count = PostReaction::where('post_id', $post_id)->count();
+            return response()->json([
+                'success' => true,
+                'message' => 'リアクションを追加しました',
+                'action' => 'created',
+                'data' => [
+                    'is_reacted' => true,
+                    'reaction_count' => $total_count
+                ]
             ]);
-            $message = 'リアクションを追加しました';
-            $isReacted = true;
+        } else {
+            $user->post_reactions()->where($searchConditions)->delete();
+            $total_count = PostReaction::where('post_id', $post_id)->count();
+            return response()->json([
+                'success' => true,
+                'message' => 'リアクションを解除しました',
+                'action' => 'deleted',
+                'data' => [
+                    'is_reacted' => false,
+                    'reaction_count' => $total_count
+                ]
+            ]);
         }
-
-        // Get the updated reaction count for this post and reaction type
-        $reactionCount = PostReaction::where('post_id', $post_id)
-            ->where('reaction_id', $reaction->id)
-            ->count();
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => [
-                'is_reacted' => $isReacted,
-                'reaction_count' => $reactionCount
-            ]
-        ]);
     }
 }
