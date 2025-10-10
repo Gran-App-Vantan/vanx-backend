@@ -31,7 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/update', [AccountController::class,'update']);
         Route::prefix('wallet')->group(function () {
             Route::get('/get', [AccountController::class,'wallet']);
-            Route::put('/update', [AccountController::class,'wallet_update']);
+            Route::post('/update', [AccountController::class,'wallet_update']);
         });
         Route::get('/ranking', [AccountController::class,'ranking']);
         Route::get('/profile/{id}', [AccountController::class,'profile']);
