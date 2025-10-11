@@ -57,11 +57,6 @@ Route::get('/storage/{path}', function ($path) {
     // パスの正規化
     $normalizedPath = ltrim($path, '/');
     
-    // post_files/ プレフィックスがない場合は追加
-    if (!str_starts_with($normalizedPath, 'post_files/')) {
-        $normalizedPath = 'post_files/' . $normalizedPath;
-    }
-    
     $fullPath = storage_path('app/public/' . $normalizedPath);
     
     if (!file_exists($fullPath)) {

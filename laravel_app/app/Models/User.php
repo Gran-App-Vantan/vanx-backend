@@ -82,4 +82,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(PostReaction::class);
     }
+
+    /**
+     * ユーザーアイコンの絶対URLを取得
+     */
+    public function getUserIconAttribute($value): ?string
+    {
+        if ($value) {
+            // 独自の/storage/{path}エンドポイントを使用
+            return url('/api/storage/' . $value);
+        }
+        return $value;
+    }
 }
