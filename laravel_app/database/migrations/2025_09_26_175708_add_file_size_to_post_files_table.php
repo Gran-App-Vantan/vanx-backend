@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('points', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->unique();
-            $table->integer('point');
-            $table->timestamps();
+        Schema::table('post_files', function (Blueprint $table) {
+            $table->bigInteger('file_size')->nullable()->after('post_file_type');
         });
     }
 
@@ -24,7 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('points');
+        Schema::table('post_files', function (Blueprint $table) {
+            $table->dropColumn('file_size');
+        });
     }
 };
-
