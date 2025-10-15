@@ -16,4 +16,8 @@ class RuleBook extends Model
     {
         return $this->hasMany(RuleImageFile::class);
     }
+    public function game()
+    {
+        return $this->belongsTo(Game::class);
+    }
 }
