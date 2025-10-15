@@ -54,7 +54,7 @@ class AccountController extends Controller
             'user_path' => $user_path,
             'password' => Hash::make($user['password']),
             'user_job' => 'player',
-            'user_icon' => 'user_icons/default_icon.png',
+            'user_icon' => 'assets/images/default_user_icon.svg',
         ]);
         $user->points()->create([
             'point' => 10000,
