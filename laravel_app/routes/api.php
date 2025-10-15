@@ -48,6 +48,11 @@ Route::middleware('auth:sanctum')->group(function () {
             });
     });
 
+    Route::prefix('game')->group(function () {
+        Route::post('/create-url', [GameController::class,'game_url']);
+        Route::get('/login', [GameController::class,'game_login']);
+    });
+
 });
 
 Route::get('floor_map', [BoothController::class,'floor_map']);
