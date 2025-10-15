@@ -24,8 +24,8 @@ class ReactionsGetRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // 'category' => 'required|string|in:all,emoji,nature,food,activity,travel,symbol,original',//本番
-            'category' => 'required|string|in:all,face,nature,food,activity,travel,object,symbol,original',//TEST
+            'category' => 'required|string|in:all,emoji,nature,food,activity,travel,symbol,original',//本番
+            // 'category' => 'required|string|in:all,face,nature,food,activity,travel,object,symbol,original',//TEST
         ];
     }
     public function messages(): array

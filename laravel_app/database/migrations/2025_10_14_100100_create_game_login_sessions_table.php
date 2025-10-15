@@ -11,20 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('rule_books', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('game_id')->constrained('games')->onDelete('cascade');
-            $table->text('rule_content');
+        Schema::create('game_login_sessions', function (Blueprint $table) {
+            $table->string('token')->primary();
+            $table->foreignId('device_id')->constrained('devises')->onDelete('cascade');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
     }
-    //
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('rule_books');
+        Schema::dropIfExists('game_login_sessions');
     }
 };
