@@ -89,6 +89,9 @@ class User extends Authenticatable
     public function getUserIconAttribute($value): ?string
     {
         if ($value) {
+            if ($value == 'default_user_icon') {
+                return url('/assets/images/default_user_icon.svg');
+            }
             // 独自の/storage/{path}エンドポイントを使用
             return url('/api/storage/' . $value);
         }
