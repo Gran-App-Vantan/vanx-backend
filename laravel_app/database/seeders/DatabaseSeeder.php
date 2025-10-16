@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'user_path' => 'test_user',
             'password' => Hash::make('password'),
-            'user_icon' => 'assets/images/default_user_icon.svg',
+            'user_icon' => 'default_user_icon',
         ]);
     }
 }
