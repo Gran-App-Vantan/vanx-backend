@@ -17,7 +17,7 @@ class ReactionController extends Controller
         $validated = $request->validated();
         $category = $validated['category'];
         if ($category == 'all'){
-            $reactions = Reaction::paginate(25);
+            $reactions = Reaction::paginate(40);
         } else {
             $reactions = Reaction::where('reaction_type',$category)->paginate(25);
         }
