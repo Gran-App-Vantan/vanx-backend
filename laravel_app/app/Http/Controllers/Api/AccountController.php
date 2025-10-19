@@ -121,6 +121,35 @@ class AccountController extends Controller
             }
             return $post;
         });
+        $posts->transform(function ($post) {
+            // リアクションの種類ごとの情報を格納する配列
+            $reactionInfo = [];
+            
+            // 各リアクションを処理
+            foreach ($post->post_reactions as $reaction) {
+                $reactionName = $reaction->reaction->reaction_name;
+                
+                // まだ存在しないリアクションタイプの場合は初期化
+                if (!isset($reactionInfo[$reactionName])) {
+                    $reactionInfo[$reactionName] = [
+                        'count' => 0,
+                        'image' => $reaction->reaction->reaction_image,
+                        'name' => $reactionName
+                    ];
+                }
+                
+                // カウントをインクリメント
+                $reactionInfo[$reactionName]['count']++;
+                
+                // 既存の変換処理
+                $reaction->reaction_name = $reactionName;
+            }
+            
+            // 配列のインデックスをリセットして連番の配列に変換
+            $post->reaction_stats = array_values($reactionInfo);
+            
+            return $post;
+        });
 
         return response()->json([
             'success' => true,
