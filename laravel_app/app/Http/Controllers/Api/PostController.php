@@ -34,6 +34,22 @@ class PostController extends Controller
                     return $file;
                 });
             }
+
+            $reactionInfo = [];
+            foreach ($post->post_reactions as $reaction) {
+                $reactionName = $reaction->reaction->reaction_name;
+                
+                if (!isset($reactionInfo[$reactionName])) {
+                    $reactionInfo[$reactionName] = [
+                        'count' => 0,
+                        'image' => $reaction->reaction->reaction_image,
+                        'name' => $reactionName
+                    ];
+                }
+                $reactionInfo[$reactionName]['count']++;
+                $reaction->reaction_name = $reactionName;
+            }
+            $post->reaction_stats = array_values($reactionInfo);
             
             return $post;
         });
@@ -47,11 +63,9 @@ class PostController extends Controller
 
     public function show(Request $request, $id)
     {
-        // $postsは単一のPostモデルインスタンス
         $post = Post::with(['user:id,name,user_icon', 'postfile', 'post_reactions.reaction'])
             ->findOrFail($id);
     
-        // 単一モデル内のリレーションを直接操作する
         if ($post->postfile) {
             $post->postfile->transform(function ($file) {
                 // ファイルのパスからAPI経由のURLを生成し、フィールドとして追加
@@ -59,13 +73,28 @@ class PostController extends Controller
                 return $file;
             });
         }
+
+        $reactionInfo = [];
+        foreach ($post->post_reactions as $reaction) {
+            $reactionName = $reaction->reaction->reaction_name;
+            
+            if (!isset($reactionInfo[$reactionName])) {
+                $reactionInfo[$reactionName] = [
+                    'count' => 0,
+                    'image' => $reaction->reaction->reaction_image,
+                    'name' => $reactionName
+                ];
+            }
+            $reactionInfo[$reactionName]['count']++;
+            $reaction->reaction_name = $reactionName;
+        }
+        $post->reaction_stats = array_values($reactionInfo);
     
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                // 変数名を$postsから$postに変更すると、より意図が明確になります
-                'posts' => $post 
+                'post' => $post 
             ]
         ]);
     }
@@ -121,12 +150,10 @@ class PostController extends Controller
             ], 201);
     
         } catch (Throwable $th) {
-            // 4. エラー発生時のクリーンアップ処理
             if (DB::transactionLevel() > 0) {
-                DB::rollBack(); // DBへの変更をロールバック
+                DB::rollBack();
             }
     
-            // アップロードに成功していたファイルをすべて削除（ゴミファイル対策）
             if (!empty($uploadedPaths)) {
                 Storage::disk('public')->delete($uploadedPaths);
             }
@@ -141,8 +168,6 @@ class PostController extends Controller
 
     public function delete(PostDeleteRequest $request, $id) 
     {   
-
-        // 削除された投稿のIDを事前に保持
         $post = Post::findOrFail($id);
         $deletedPostId = $post->id;
         
@@ -161,7 +186,7 @@ class PostController extends Controller
                 }
                 
                 $post->delete(); 
-            }); // トランザクションが成功すれば commit
+            }); 
             
             return response()->json([
                 'success' => true,
