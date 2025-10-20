@@ -180,11 +180,34 @@ class AccountController extends Controller
         $user['point'] = $request->user()->points->point;
         if ($request->input('filter') == "all") {
             $pointlogs = $request->user()->pointlogs()->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = ($pointlog->type == 'get' || $pointlog->type == 'import') ? 'plus' : 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+
+            });
         } else if ($request->input('filter') == "plus") {
             $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'plus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         } else if ($request->input('filter') == "minus") {
             $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         }
+
 
 
         return response()->json([
