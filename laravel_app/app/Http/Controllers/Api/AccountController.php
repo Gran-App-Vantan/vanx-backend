@@ -179,11 +179,11 @@ class AccountController extends Controller
         $user = $user->only('id', 'name', 'user_icon');
         $user['point'] = $request->user()->points->point;
         if ($request->input('filter') == "all") {
-            $pointlogs = $request->user()->pointlogs->toArray();
+            $pointlogs = $request->user()->pointlogs()->paginate(10);
         } else if ($request->input('filter') == "plus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
         } else if ($request->input('filter') == "minus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
         }
 
 
@@ -221,7 +221,7 @@ class AccountController extends Controller
             ->orderByDesc('points.point')
             ->select('users.*') // usersテーブルの全カラムを選択
             ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
-            ->get();
+            ->paginate(10);
 
         $my_account = $request->user()->load('points');
         $my_account = $my_account->only('id', 'name', 'user_icon');
