@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\GameController;
 Route::prefix('account')->group(function () {
     Route::post('/sign-up', [AccountController::class, 'register']);
     Route::post('/login', [AccountController::class, 'login']);
+    Route::post('/link', [AccountController::class, 'link']);
 });
 
 Route::prefix('post')->group(function () {
@@ -47,12 +48,6 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/{post_id}', [ReactionController::class,'reaction']);
             });
     });
-
-    Route::prefix('game')->group(function () {
-        Route::post('/create-url', [GameController::class,'game_url']);
-        Route::get('/login', [GameController::class,'game_login']);
-    });
-
 });
 
 Route::get('floor_map', [BoothController::class,'floor_map']);

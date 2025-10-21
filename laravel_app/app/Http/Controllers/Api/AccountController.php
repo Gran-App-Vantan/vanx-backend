@@ -131,8 +131,9 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function me(Request $request)
+    public function me(Request $request,$user_id)
     {
+        
         $user = $request->user()->load('points');
         $user = $user->only('id', 'name', 'user_icon');
         $user['point'] = $request->user()->points->point;
