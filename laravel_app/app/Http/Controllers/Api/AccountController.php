@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Point;
@@ -74,6 +75,36 @@ class AccountController extends Controller
             ]
         ]);
     }
+    public function show(Request $request, $user_id)
+    {
+        try {
+            $user = User::findOrFail($user_id);
+            $user['point'] = $user->points->point;
+            $userData = $user->only(['id', 'name', 'user_icon', 'point']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => '取得に成功しました',
+                'data' => [
+                    'user' => $userData
+                ]
+            ]);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ユーザーが見つかりませんでした',
+                'data' => [
+                    'user' => [
+                        'id' => null,
+                        'name' => null,
+                        'user_icon' => null,
+                        'point' => null,
+                    ]
+                ]
+            ], 404);
+        }
+    }
     public function update(AccountUpdateRequest $request){
         $user = $request->user();
         $updateData = [
@@ -131,9 +162,8 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function me(Request $request,$user_id)
+    public function me(Request $request)
     {
-        
         $user = $request->user()->load('points');
         $user = $user->only('id', 'name', 'user_icon');
         $user['point'] = $request->user()->points->point;
@@ -168,20 +198,23 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function wallet_update(WalletUpdateRequest $request){
+    public function wallet_update(WalletUpdateRequest $request , $sns_id){
         //設計の改善の必要あり、ブランチを変更して作成します。
-        $user = $request->user();
+        $user = User::where('id', $sns_id)->with('points')->first();
         $point = $user->points;
+        $point_old = $point->point;
+        $point_new = (int)$request->input('point');
         $point->update([
-            'point' => $point->point + $request->input('point'),
+            'point' => $point_new,
         ]);
         $user->pointlogs()->create([
-            'user_id' => $user->id,
-            'point_amount' => $request->input('point'),
+            'user_id' => $sns_id,
+            'point_amount' => $point_new - $point_old,
             'service_name' => $request->input('service_name'),
             'description' => $request->input('description'),
             'type' => $request->input('type'),
         ]);
+        
         return response()->json([
             'success' => true,
             'message' => '更新に成功しました',

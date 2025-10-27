@@ -10,9 +10,9 @@ class Game extends Model
     protected $fillable = [
         'name'
     ];
-    public function devises()
+    public function devices()
     {
-        return $this->hasMany(Devise::class);
+        return $this->hasMany(Device::class);
     }
     public function rulebooks()
     {
