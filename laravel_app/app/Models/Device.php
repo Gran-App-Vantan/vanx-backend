@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Devise extends Model
+class Device extends Model
 {
     //
     protected $fillable = [
