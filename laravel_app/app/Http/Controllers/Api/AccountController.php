@@ -55,7 +55,7 @@ class AccountController extends Controller
             'user_path' => $user_path,
             'password' => Hash::make($user['password']),
             'user_job' => 'player',
-            'user_icon' => 'user_icons/default_icon.png',
+            'user_icon' => 'default_user_icon',
         ]);
         $user->points()->create([
             'point' => 10000,
@@ -152,6 +152,35 @@ class AccountController extends Controller
             }
             return $post;
         });
+        $posts->transform(function ($post) {
+            // リアクションの種類ごとの情報を格納する配列
+            $reactionInfo = [];
+            
+            // 各リアクションを処理
+            foreach ($post->post_reactions as $reaction) {
+                $reactionName = $reaction->reaction->reaction_name;
+                
+                // まだ存在しないリアクションタイプの場合は初期化
+                if (!isset($reactionInfo[$reactionName])) {
+                    $reactionInfo[$reactionName] = [
+                        'count' => 0,
+                        'image' => $reaction->reaction->reaction_image,
+                        'name' => $reactionName
+                    ];
+                }
+                
+                // カウントをインクリメント
+                $reactionInfo[$reactionName]['count']++;
+                
+                // 既存の変換処理
+                $reaction->reaction_name = $reactionName;
+            }
+            
+            // 配列のインデックスをリセットして連番の配列に変換
+            $post->reaction_stats = array_values($reactionInfo);
+            
+            return $post;
+        });
 
         return response()->json([
             'success' => true,
@@ -181,12 +210,35 @@ class AccountController extends Controller
         $user = $user->only('id', 'name', 'user_icon');
         $user['point'] = $request->user()->points->point;
         if ($request->input('filter') == "all") {
-            $pointlogs = $request->user()->pointlogs->toArray();
+            $pointlogs = $request->user()->pointlogs()->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = ($pointlog->type == 'get' || $pointlog->type == 'import') ? 'plus' : 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+
+            });
         } else if ($request->input('filter') == "plus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'plus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         } else if ($request->input('filter') == "minus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         }
+
 
 
         return response()->json([
@@ -226,7 +278,7 @@ class AccountController extends Controller
             ->orderByDesc('points.point')
             ->select('users.*') // usersテーブルの全カラムを選択
             ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
-            ->get();
+            ->paginate(10);
 
         $my_account = $request->user()->load('points');
         $my_account = $my_account->only('id', 'name', 'user_icon');
