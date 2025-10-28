@@ -293,6 +293,10 @@ class AccountController extends Controller
                 'name' => $user->name,
                 'user_icon' => $user->user_icon,
                 'point' => $user->points->point ?? 0,
+                'priority' => User::where('user_job', 'player')
+                    ->leftJoin('points', 'users.id', '=', 'points.user_id')
+                    ->where('points.point', '>', ($user->points->point ?? 0))
+                    ->count() + 1,
             ];
         });
 
