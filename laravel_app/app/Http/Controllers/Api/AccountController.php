@@ -129,7 +129,7 @@ class AccountController extends Controller
         $user = User::with([
             'points',
             'posts' => function($query) {
-                $query->orderBy('created_at', 'desc');
+                $query->orderBy('created_at', 'desc')->paginate(10);
             },
             'posts.postfile',
             'posts.post_reactions.reaction'
