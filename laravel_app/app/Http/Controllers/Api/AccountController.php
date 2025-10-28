@@ -109,9 +109,14 @@ class AccountController extends Controller
         $user = $request->user();
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "password" => Hash::make($request->input('password')) ?: $user->password,
             "user_icon" => $request->hasFile('user_icon') ? $request->file('user_icon')->storePublicly('user_icons','public') : $user->user_icon
         ];
+        
+        // パスワードが提供された場合のみ更新
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->input('password'));
+        }
+        
         $user->update($updateData);
         
         return response()->json([

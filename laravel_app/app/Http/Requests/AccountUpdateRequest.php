@@ -21,12 +21,26 @@ class AccountUpdateRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
+    protected function prepareForValidation()
+    {
+        // 空文字列をnullに変換
+        $this->merge([
+            'name' => $this->name === '' ? null : $this->name,
+            'password' => $this->password === '' ? null : $this->password,
+        ]);
+    }
+
     public function rules(): array
     {
+        // デバッグ用にリクエストデータをログに出力
+        \Log::info('Account update request data:', $this->all());
+        \Log::info('Files in request:', $this->allFiles());
+        \Log::info('User ID: ' . auth()->id());
+        
         return [
-            'name' => 'nullable|string|min:1|max:32|unique:users,name',
+            'name' => 'nullable|string|max:32|unique:users,name,' . auth()->id(),
             'password' => 'nullable|string|min:8|max:32',
-            'user_icon' => 'nullable|image|mimes:png,jpeg,jpg,gif,svg,webp|max:5120',
+            'user_icon' => 'nullable|file|max:5120',
         ];
 
     }
@@ -45,12 +59,23 @@ class AccountUpdateRequest extends FormRequest
     }
     public function failedValidation(Validator $validator)
     {
+        \Log::error('Validation failed for account update:', [
+            'errors' => $validator->errors()->toArray(),
+            'request_data' => $this->all(),
+            'user_id' => auth()->id()
+        ]);
+        
         throw new HttpResponseException(
             response()->json([
                 'success' => false,
-                'messages' => collect($validator->errors()->messages())
+                'message' => 'プロフィールの更新に失敗しました。',
+                'errors' => collect($validator->errors()->messages())
                     ->flatten()
-                    ->toArray()
+                    ->toArray(),
+                'debug' => [
+                    'request_data' => $this->all(),
+                    'validation_errors' => $validator->errors()->toArray()
+                ]
             ], 422)
         );
     }
