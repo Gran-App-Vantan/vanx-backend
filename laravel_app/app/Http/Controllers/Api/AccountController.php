@@ -246,6 +246,15 @@ class AccountController extends Controller
             ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
             ->paginate(10);
 
+        $users->getCollection()->transform(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_icon' => $user->user_icon,
+                'point' => $user->points->point ?? 0,
+            ];
+        });
+
         $my_account = $request->user()->load('points');
         $my_account = $my_account->only('id', 'name', 'user_icon');
         $my_account['point'] = $request->user()->points->point;
@@ -255,14 +264,7 @@ class AccountController extends Controller
             'message' => '取得に成功しました',
             'data' => [
                 'my_account' => $my_account,
-                'users' => $users->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'user_icon' => $user->user_icon,
-                        'point' => $user->points->point ?? 0,
-                    ];
-                })  
+                'users' => $users
             ]
         ]); 
     }
