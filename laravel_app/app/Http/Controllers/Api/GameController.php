@@ -34,7 +34,7 @@ class GameController extends Controller
         $url = GameLoginSession::create([
             'token' => Str::random(60),
             'device_id' => $device->id,
-            'expires_at' => now()->addMinutes(1),
+            'expires_at' => now()->addHours(2),
         ]);
 
         return response()->json([
