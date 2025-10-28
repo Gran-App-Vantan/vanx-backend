@@ -92,6 +92,9 @@ class User extends Authenticatable
             if ($value == 'default_user_icon' || $value == 'assets/images/default_user_icon.svg') {
                 return url('/assets/images/default_user_icon.svg');
             }
+            if (preg_match('/^https?:\/\//', $value) || str_starts_with($value, '/api/storage/') || str_starts_with($value, 'api/storage/')) {
+                return $value;
+            }
             // 独自の/storage/{path}エンドポイントを使用
             return url('/api/storage/' . $value);
         }

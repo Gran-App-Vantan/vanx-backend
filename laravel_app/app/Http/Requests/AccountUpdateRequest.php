@@ -71,11 +71,7 @@ class AccountUpdateRequest extends FormRequest
                 'message' => 'プロフィールの更新に失敗しました。',
                 'errors' => collect($validator->errors()->messages())
                     ->flatten()
-                    ->toArray(),
-                'debug' => [
-                    'request_data' => $this->all(),
-                    'validation_errors' => $validator->errors()->toArray()
-                ]
+                    ->toArray()
             ], 422)
         );
     }

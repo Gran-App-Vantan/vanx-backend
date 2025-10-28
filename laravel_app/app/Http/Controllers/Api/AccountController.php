@@ -109,7 +109,9 @@ class AccountController extends Controller
         $user = $request->user();
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "user_icon" => $request->hasFile('user_icon') ? $request->file('user_icon')->storePublicly('user_icons','public') : $user->user_icon
+            "user_icon" => $request->hasFile('user_icon')
+                ? $request->file('user_icon')->storePublicly('user_icons','public')
+                : $user->getOriginal('user_icon')
         ];
         
         // パスワードが提供された場合のみ更新
@@ -121,7 +123,7 @@ class AccountController extends Controller
         
         return response()->json([
             'success' => true,
-            'messages' => ['更新に成功しました'],
+            'messages' => '更新に成功しました',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -151,7 +153,7 @@ class AccountController extends Controller
         $posts->transform(function ($post) {
             if ($post->postfile) {
                 $post->postfile->transform(function ($file) {
-                    $file->post_file_url = url('api/storage/' . $file->post_file_path);
+                    $file->post_file_url = $file->post_file_path;
                     return $file;
                 });
             }
