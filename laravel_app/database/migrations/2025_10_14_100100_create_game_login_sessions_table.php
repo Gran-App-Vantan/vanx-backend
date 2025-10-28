@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('game_login_sessions', function (Blueprint $table) {
             $table->string('token')->primary();
-            $table->foreignId('device_id')->constrained('devises')->onDelete('cascade');
+            $table->foreignId('device_id')->constrained('devices')->onDelete('cascade');
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });

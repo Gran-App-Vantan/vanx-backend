@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\GameController;
 Route::prefix('account')->group(function () {
     Route::post('/sign-up', [AccountController::class, 'register']);
     Route::post('/login', [AccountController::class, 'login']);
+    Route::get('/show/{user_id}', [AccountController::class,'show']);
+
 });
 
 Route::prefix('post')->group(function () {
@@ -31,7 +33,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/update', [AccountController::class,'update']);
         Route::prefix('wallet')->group(function () {
             Route::get('/get', [AccountController::class,'wallet']);
-            Route::post('/update', [AccountController::class,'wallet_update']);
         });
         Route::get('/ranking', [AccountController::class,'ranking']);
         Route::get('/profile/{id}', [AccountController::class,'profile']);
@@ -47,11 +48,26 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/{post_id}', [ReactionController::class,'reaction']);
             });
     });
-
+    
+});
+Route::middleware(['auth:sanctum', 'can:is-dealer'])->group(function () {
+    Route::prefix('game')->group(function () {
+        Route::post('/create-url', [GameController::class,'create_url']);
+        Route::post('/token-check', [GameController::class,'token_check']);
+        Route::delete('/token-delete', [GameController::class,'token_delete']);
+    });
+    Route::prefix('account')->group(function () {
+        Route::prefix('wallet')->group(function () {
+            Route::patch('/update/{sns_id}', [AccountController::class,'wallet_update']);
+        });
+    });
 });
 
 Route::get('floor_map', [BoothController::class,'floor_map']);
 Route::get('rule/{id}', [GameController::class,'game_rule']);
+
+
+
 
 Route::get('/storage/{path}', function ($path) {
     // パスの正規化

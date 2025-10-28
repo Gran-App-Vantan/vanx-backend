@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Point;
@@ -73,6 +74,36 @@ class AccountController extends Controller
                 'user_job' => $user->user_job,
             ]
         ]);
+    }
+    public function show(Request $request, $user_id)
+    {
+        try {
+            $user = User::findOrFail($user_id);
+            $user['point'] = $user->points->point;
+            $userData = $user->only(['id', 'name', 'user_icon', 'point']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => '取得に成功しました',
+                'data' => [
+                    'user' => $userData
+                ]
+            ]);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ユーザーが見つかりませんでした',
+                'data' => [
+                    'user' => [
+                        'id' => null,
+                        'name' => null,
+                        'user_icon' => null,
+                        'point' => null,
+                    ]
+                ]
+            ], 404);
+        }
     }
     public function update(AccountUpdateRequest $request){
         $user = $request->user();
@@ -179,12 +210,35 @@ class AccountController extends Controller
         $user = $user->only('id', 'name', 'user_icon');
         $user['point'] = $request->user()->points->point;
         if ($request->input('filter') == "all") {
-            $pointlogs = $request->user()->pointlogs->toArray();
+            $pointlogs = $request->user()->pointlogs()->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = ($pointlog->type == 'get' || $pointlog->type == 'import') ? 'plus' : 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+
+            });
         } else if ($request->input('filter') == "plus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'plus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         } else if ($request->input('filter') == "minus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->get()->toArray();
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
         }
+
 
 
         return response()->json([
@@ -196,20 +250,23 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function wallet_update(WalletUpdateRequest $request){
+    public function wallet_update(WalletUpdateRequest $request , $sns_id){
         //設計の改善の必要あり、ブランチを変更して作成します。
-        $user = $request->user();
+        $user = User::where('id', $sns_id)->with('points')->first();
         $point = $user->points;
+        $point_old = $point->point;
+        $point_new = (int)$request->input('point');
         $point->update([
-            'point' => $point->point + $request->input('point'),
+            'point' => $point_new,
         ]);
         $user->pointlogs()->create([
-            'user_id' => $user->id,
-            'point_amount' => $request->input('point'),
+            'user_id' => $sns_id,
+            'point_amount' => $point_new - $point_old,
             'service_name' => $request->input('service_name'),
             'description' => $request->input('description'),
             'type' => $request->input('type'),
         ]);
+        
         return response()->json([
             'success' => true,
             'message' => '更新に成功しました',
@@ -221,7 +278,16 @@ class AccountController extends Controller
             ->orderByDesc('points.point')
             ->select('users.*') // usersテーブルの全カラムを選択
             ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
-            ->get();
+            ->paginate(10);
+
+        $users->getCollection()->transform(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_icon' => $user->user_icon,
+                'point' => $user->points->point ?? 0,
+            ];
+        });
 
         $my_account = $request->user()->load('points');
         $my_account = $my_account->only('id', 'name', 'user_icon');
@@ -232,14 +298,7 @@ class AccountController extends Controller
             'message' => '取得に成功しました',
             'data' => [
                 'my_account' => $my_account,
-                'users' => $users->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'user_icon' => $user->user_icon,
-                        'point' => $user->points->point ?? 0,
-                    ];
-                })  
+                'users' => $users
             ]
         ]); 
     }
