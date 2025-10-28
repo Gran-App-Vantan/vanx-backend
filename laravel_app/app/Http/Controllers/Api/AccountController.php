@@ -153,7 +153,7 @@ class AccountController extends Controller
         $posts->transform(function ($post) {
             if ($post->postfile) {
                 $post->postfile->transform(function ($file) {
-                    $file->post_file_url = $file->post_file_path;
+                    $file->post_file_url = url('api/storage/'.$file->post_file_path);
                     return $file;
                 });
             }
