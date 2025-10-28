@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('user_icon')->nullable();
             $table->text('biography')->nullable();
             $table->boolean('game_play_flag')->default(false);
-            $table->enum('user_job', ['master','player','guest'])->default('player');
+            $table->enum('user_job', ['admin','player','guest','dealer'])->default('player');
             $table->rememberToken();
             $table->timestamps();
         });

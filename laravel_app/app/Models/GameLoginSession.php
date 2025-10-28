@@ -20,6 +20,6 @@ class GameLoginSession extends Model
     ];
     public function device()
     {
-        return $this->belongsTo(Devise::class);
+        return $this->belongsTo(Device::class);
     }
 }

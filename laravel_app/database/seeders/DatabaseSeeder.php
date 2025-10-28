@@ -18,12 +18,6 @@ class DatabaseSeeder extends Seeder
 
         // リアクションの初期データを設定
         $this->call(ReactionsSeeder::class);
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'user_path' => 'test_user',
-            'password' => Hash::make('password'),
-            'user_icon' => 'default_user_icon',
-        ]);
+        $this->call(GameAndDeviceSeeder::class);
     }
 }
