@@ -26,3 +26,9 @@ start:
 	@docker compose up -d
 	@docker compose run app bash
 
+storedealer:
+	@docker compose run app php artisan db:seed --class=DealerCreateSeeder
+	@docker compose run app cat storage/app/public/DealerToken.txt
+
+getdealer:
+	@docker compose run app cat storage/app/public/DealerToken.txt
