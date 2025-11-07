@@ -38,19 +38,9 @@ class TopController extends Controller
             return redirect()->route("register")->with("error", "Password does not match");
         }
 
-        $path_check = false;
-        while ($path_check == false) {
-            $user_path = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@_'), 0, 8); // 8文字のランダム文字列
-            if (!User::where('user_path', $user_path)->exists()) {
-                $path_check = true;
-            };
-        }
-        
-
         $user = User::create([
             'name' => $name,
             'password' => Hash::make($password), // パスワードをハッシュ化して保存
-            'user_path' => $user_path,
             'user_icon' => 'user_icons/default_icon.png',
         ]);
         Point::create([
@@ -65,9 +55,9 @@ class TopController extends Controller
     }
 
     function login_store(Request $request) {
-        $user_path = $request->user_path;
+        $name = $request->name;
         $password = $request->password;
-        $user = User::where('user_path', $user_path)->first();
+        $user = User::where('name', $name)->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             $error = "ユーザーID、またはパスワードが間違っています";
@@ -85,7 +75,6 @@ class TopController extends Controller
         $user = User::find($id);
         $updateData = [
             "name" => $request->input('name') ?: $user->name,
-            "user_path" => $request->input('user_path', "") ?: $user->user_path
         ];
 
         if ($request->hasFile('user_icon')) {
