@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TestControllers\TopController;
 
 
-
-Route::prefix('test')->group(function () {
+Route::middleware('can:is-admin')->group(function () {
+    Route::prefix('test')->group(function () {
     Route::prefix('accounts')->group(function () {
         Route::prefix('register')->group(function () {
             Route::get('/', [TopController::class,'register'])->name('register');
@@ -37,7 +37,7 @@ Route::prefix('test')->group(function () {
     });
     Route::get('/floor_map/{id}', [TopController::class,'floor_map'])->name('floor_map');
     Route::get('/rule/{id}', [TopController::class,'game_rule'])->name('game_rule');
-
+    });
 });
 
 

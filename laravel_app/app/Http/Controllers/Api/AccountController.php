@@ -40,19 +40,10 @@ class AccountController extends Controller
     }
     public function register(AuthSignUpRequest $request)
     {
-        $user_paths = User::all()->pluck('user_path')->toArray();
         $validated = $request->validated();
         $user = $validated['user'];
-        $user_path_check = false;
-        while ($user_path_check == false) {
-            $user_path = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@_'), 0, 8); // 8文字のランダム文字列
-            if (!in_array($user_path, $user_paths)) {
-                $user_path_check = true;
-            };
-        }
         $user = User::create([
             'name' => $user['name'],
-            'user_path' => $user_path,
             'password' => Hash::make($user['password']),
             'user_job' => 'player',
             'user_icon' => 'default_user_icon',
@@ -70,7 +61,6 @@ class AccountController extends Controller
             'user' => [
                 'id' => $user->id, 
                 'name' => $user->name,
-                'user_path' => $user->user_path,
                 'user_job' => $user->user_job,
             ]
         ]);
@@ -144,7 +134,7 @@ class AccountController extends Controller
         
         $posts = $user->posts;
 
-        $user->makeHidden(['password', 'remember_token','user_path','posts']);
+        $user->makeHidden(['password', 'remember_token', 'posts']);
 
         $user->point = $user->points->point ?? 0;
         unset($user->points); 

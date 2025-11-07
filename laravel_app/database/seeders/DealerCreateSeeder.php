@@ -17,7 +17,6 @@ class DealerCreateSeeder extends Seeder
         $filepath = storage_path('app/public/DealerToken.txt');
         $user = User::create([
             'name' => 'Dealer',
-            'user_path' => '12dea34ler4',
             'password' => Hash::make('dealer1234'),
             'user_icon' => 'default_user_icon',
             'biography' => null,

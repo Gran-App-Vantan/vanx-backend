@@ -48,12 +48,13 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/{post_id}', [ReactionController::class,'reaction']);
             });
     });
-    
+    Route::prefix('game')->group(function () {
+        Route::post('/token-check', [GameController::class,'token_check']);
+    });
 });
 Route::middleware(['auth:sanctum', 'can:is-dealer'])->group(function () {
     Route::prefix('game')->group(function () {
         Route::post('/create-url', [GameController::class,'create_url']);
-        Route::post('/token-check', [GameController::class,'token_check']);
         Route::delete('/token-delete', [GameController::class,'token_delete']);
     });
     Route::prefix('account')->group(function () {

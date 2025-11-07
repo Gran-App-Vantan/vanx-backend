@@ -46,27 +46,35 @@ class GameController extends Controller
             ]
         ]);
     }
-    public function token_check(CheckUrlRequest $request){
+    public function token_check(CheckUrlRequest $request)
+    {
         $token = $request->input('token');
-        $game_login_session = GameLoginSession::where('token', $token)->first();
+        $user_id = $request->user()->id;
+        $user_point = $request->user()->points->point;
+        $game_login_session = GameLoginSession::with('device')->where('token', $token)->first();
+        
         if (!$game_login_session) {
             return response()->json([
                 'success' => false,
                 'message' => 'トークンは存在しません',
             ], 404);
         }
+
         if ($game_login_session->expires_at < now()) {
             return response()->json([
                 'success' => false,
                 'message' => 'トークンの有効期限が切れています',
             ], 404);
         }
+
         return response()->json([
             'success' => true,
             'message' => 'トークンは存在します',
             'data' => [
+                'user_id' => $user_id,
+                'has_point' => $user_point,
                 'token' => $game_login_session->token,
-                'device_id' => $game_login_session->device_id,
+                'device_number' => $game_login_session->device->device_number,
                 'expires_at' => $game_login_session->expires_at
             ]
         ]);
