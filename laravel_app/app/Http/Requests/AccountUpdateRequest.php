@@ -47,7 +47,7 @@ class AccountUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.min' => '名前は1文字以上で入力してください',
+            'name.min' => 'ゆうせいを愛してください',
             'name.max' => '名前は32文字以下で入力してください',
             'name.unique' => '名前は既に使用されています',
             'password.min' => 'パスワードは8文字以上で入力してください',
