@@ -1,0 +1,306 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Point;
+use App\Models\PointLog;
+use App\Http\Requests\AuthSignUpRequest;
+use App\Http\Requests\AuthLoginRequest;
+use App\Http\Requests\AccountUpdateRequest;
+use App\Http\Requests\WalletFillterRequest;
+use App\Http\Requests\WalletUpdateRequest;
+
+class AccountController extends Controller
+{
+    //
+    public function login(AuthLoginRequest $request){
+    $validated = $request->validated();
+    $user_name = $validated['user']['name'];
+    $password = $validated['user']['password'];
+    if (Auth::attempt(['name' => $user_name, 'password' => $password])) {
+        $authUser = Auth::user();
+        return response()->json([
+            'success' => true,
+            'messages' => ['ログインに成功しました。'],
+            'authToken' => $authUser->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken,
+        ]);
+    }
+    return response()->json(
+        [
+            'success' => false,
+            'messages' => ['名前またはパスワードが正しくありません。'],
+        ], 401);
+    }
+    public function register(AuthSignUpRequest $request)
+    {
+        $validated = $request->validated();
+        $user = $validated['user'];
+        $user = User::create([
+            'name' => $user['name'],
+            'password' => Hash::make($user['password']),
+            'user_job' => 'player',
+            'user_icon' => 'default_user_icon',
+        ]);
+        $user->points()->create([
+            'point' => 10000,
+        ]);
+
+        $token = $user->createToken('authToken', ['*'], now()->addDays(7))->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'messages' => ['ユーザー登録が完了しました'],
+            'authToken' => $token,
+            'user' => [
+                'id' => $user->id, 
+                'name' => $user->name,
+                'user_job' => $user->user_job,
+            ]
+        ]);
+    }
+    public function show(Request $request, $user_id)
+    {
+        try {
+            $user = User::findOrFail($user_id);
+            $user['point'] = $user->points->point;
+            $userData = $user->only(['id', 'name', 'user_icon', 'point']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => '取得に成功しました',
+                'data' => [
+                    'user' => $userData
+                ]
+            ]);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ユーザーが見つかりませんでした',
+                'data' => [
+                    'user' => [
+                        'id' => null,
+                        'name' => null,
+                        'user_icon' => null,
+                        'point' => null,
+                    ]
+                ]
+            ], 404);
+        }
+    }
+    public function update(AccountUpdateRequest $request){
+        $user = $request->user();
+        $updateData = [
+            "name" => $request->input('name') ?: $user->name,
+            "user_icon" => $request->hasFile('user_icon')
+                ? $request->file('user_icon')->storePublicly('user_icons','public')
+                : $user->getOriginal('user_icon')
+        ];
+        
+        // パスワードが提供された場合のみ更新
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->input('password'));
+        }
+        
+        $user->update($updateData);
+        
+        return response()->json([
+            'success' => true,
+            'messages' => '更新に成功しました',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_icon' => $user->user_icon
+            ]
+        ]);
+    }
+    public function profile(Request $request, $id)
+    {
+        $user = User::with([
+            'points',
+            'posts' => function($query) {
+                $query->orderBy('created_at', 'desc')->paginate(10);
+            },
+            'posts.postfile',
+            'posts.post_reactions.reaction'
+        ])->findOrFail($id);
+        
+        $posts = $user->posts;
+
+        $user->makeHidden(['password', 'remember_token', 'posts']);
+
+        $user->point = $user->points->point ?? 0;
+        unset($user->points); 
+
+        // 投稿のファイルURLフィールドを追加
+        $posts->transform(function ($post) {
+            if ($post->postfile) {
+                $post->postfile->transform(function ($file) {
+                    $file->post_file_url = url('api/storage/'.$file->post_file_path);
+                    return $file;
+                });
+            }
+            return $post;
+        });
+        $posts->transform(function ($post) {
+            // リアクションの種類ごとの情報を格納する配列
+            $reactionInfo = [];
+            
+            // 各リアクションを処理
+            foreach ($post->post_reactions as $reaction) {
+                $reactionName = $reaction->reaction->reaction_name;
+                
+                // まだ存在しないリアクションタイプの場合は初期化
+                if (!isset($reactionInfo[$reactionName])) {
+                    $reactionInfo[$reactionName] = [
+                        'count' => 0,
+                        'image' => $reaction->reaction->reaction_image,
+                        'name' => $reactionName
+                    ];
+                }
+                
+                // カウントをインクリメント
+                $reactionInfo[$reactionName]['count']++;
+                
+                // 既存の変換処理
+                $reaction->reaction_name = $reactionName;
+            }
+            
+            // 配列のインデックスをリセットして連番の配列に変換
+            $post->reaction_stats = array_values($reactionInfo);
+            
+            return $post;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => '取得に成功しました',
+            'data' => [
+                'user' => $user,
+                'posts' => $posts
+            ]
+        ]);
+    }
+    public function me(Request $request)
+    {
+        $user = $request->user()->load('points');
+        $user = $user->only('id', 'name', 'user_icon');
+        $user['point'] = $request->user()->points->point;
+        return response()->json([
+            'success' => true,
+            'message' => '取得に成功しました',
+            'data' => [
+                'user' => $user
+            ]
+        ]);
+    }
+    public function wallet(WalletFillterRequest $request)
+    {
+        $user = $request->user()->load('points');
+        $user = $user->only('id', 'name', 'user_icon');
+        $user['point'] = $request->user()->points->point;
+        if ($request->input('filter') == "all") {
+            $pointlogs = $request->user()->pointlogs()->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = ($pointlog->type == 'get' || $pointlog->type == 'import') ? 'plus' : 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+
+            });
+        } else if ($request->input('filter') == "plus") {
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'plus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
+        } else if ($request->input('filter') == "minus") {
+            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
+            $pointlogs->transform(function ($pointlog) {
+                $pointlog->type = 'minus';
+                $pointlog->date = $pointlog->created_at->format('m/d');
+                $pointlog->time = $pointlog->created_at->format('H:i');
+                unset($pointlog->created_at);
+                return $pointlog;
+            });
+        }
+
+
+
+        return response()->json([
+            'success' => true,
+            'message' => '取得に成功しました',
+            'data' => [
+                'user' => $user,
+                'pointlogs' => $pointlogs
+            ]
+        ]);
+    }
+    public function wallet_update(WalletUpdateRequest $request , $sns_id){
+        //設計の改善の必要あり、ブランチを変更して作成します。
+        $user = User::where('id', $sns_id)->with('points')->first();
+        $point = $user->points;
+        $point_old = $point->point;
+        $point_new = (int)$request->input('point');
+        $point->update([
+            'point' => $point_new,
+        ]);
+        $user->pointlogs()->create([
+            'user_id' => $sns_id,
+            'point_amount' => $point_new - $point_old,
+            'service_name' => $request->input('service_name'),
+            'description' => $request->input('description'),
+            'type' => $request->input('type'),
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => '更新に成功しました',
+        ]);
+    }
+    public function ranking(Request $request){
+        $users = User::where('user_job', 'player')
+            ->leftJoin('points', 'users.id', '=', 'points.user_id')
+            ->orderByDesc('points.point')
+            ->select('users.*') // usersテーブルの全カラムを選択
+            ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
+            ->paginate(10);
+
+        $users->getCollection()->transform(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_icon' => $user->user_icon,
+                'point' => $user->points->point ?? 0,
+                'priority' => User::where('user_job', 'player')
+                    ->leftJoin('points', 'users.id', '=', 'points.user_id')
+                    ->where('points.point', '>', ($user->points->point ?? 0))
+                    ->count() + 1,
+            ];
+        });
+
+        $my_account = $request->user()->load('points');
+        $my_account = $my_account->only('id', 'name', 'user_icon');
+        $my_account['point'] = $request->user()->points->point;
+
+        return response()->json([
+            'success' => true,
+            'message' => '取得に成功しました',
+            'data' => [
+                'my_account' => $my_account,
+                'users' => $users
+            ]
+        ]); 
+    }
+}
