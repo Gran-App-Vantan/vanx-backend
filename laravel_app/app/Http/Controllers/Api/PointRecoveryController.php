@@ -58,7 +58,8 @@ class PointRecoveryController extends Controller
                     'success' => true,
                     'message' => 'ポイント回復に成功しました',
                     'data' => [
-                        'new_balance' => $updatedPoint
+                        'getPoint' => $session->amount,
+                        'newMyPoint' => $updatedPoint,
                     ]
                 ], 200);
                 
