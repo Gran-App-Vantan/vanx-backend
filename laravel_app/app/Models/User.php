@@ -73,6 +73,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Post::class);
     }
+
+    public function point_recovery_users()
+    {
+        return $this->belongsToMany(PointRecoverySession::class, 'point_recovery_users', 'user_id', 'point_recovery_session_id');
+    }
     
     /**
      * ユーザーが作成した投稿へのリアクションを取得
