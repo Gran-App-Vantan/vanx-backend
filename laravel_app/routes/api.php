@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\BoothController;
 use App\Http\Controllers\Api\GameController;
-
+use App\Http\Controllers\Api\PointRecoveryController;
 
 
 Route::prefix('account')->group(function () {
@@ -37,6 +37,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ranking', [AccountController::class,'ranking']);
         Route::get('/profile/{id}', [AccountController::class,'profile']);
     });
+    Route::prefix('point-recovery')->group(function () {
+        Route::patch('/use-recovery', [PointRecoveryController::class,'use_recovery']);
+    });
+
     
     Route::prefix('post')->group(function () {
             Route::get('/focus/{id}', [PostController::class,'show']);
@@ -61,6 +65,14 @@ Route::middleware(['auth:sanctum', 'can:is-dealer'])->group(function () {
         Route::prefix('wallet')->group(function () {
             Route::patch('/update/{sns_id}', [AccountController::class,'wallet_update']);
         });
+    });
+});
+
+Route::middleware(['auth:sanctum', 'can:is-admin'])->group(function () {
+    Route::prefix('point-recovery')->group(function () {
+        Route::post('/create', [PointRecoveryController::class,'create']);
+        Route::get('/get', [PointRecoveryController::class,'index']);
+        Route::delete('/delete', [PointRecoveryController::class,'delete']);
     });
 });
 

@@ -201,52 +201,42 @@ class AccountController extends Controller
             ]
         ]);
     }
-    public function wallet(WalletFillterRequest $request)
-    {
-        $user = $request->user()->load('points');
-        $user = $user->only('id', 'name', 'user_icon');
-        $user['point'] = $request->user()->points->point;
-        if ($request->input('filter') == "all") {
-            $pointlogs = $request->user()->pointlogs()->paginate(10);
-            $pointlogs->transform(function ($pointlog) {
-                $pointlog->type = ($pointlog->type == 'get' || $pointlog->type == 'import') ? 'plus' : 'minus';
-                $pointlog->date = $pointlog->created_at->format('m/d');
-                $pointlog->time = $pointlog->created_at->format('H:i');
-                unset($pointlog->created_at);
-                return $pointlog;
-
-            });
-        } else if ($request->input('filter') == "plus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['get', 'import'])->paginate(10);
-            $pointlogs->transform(function ($pointlog) {
-                $pointlog->type = 'plus';
-                $pointlog->date = $pointlog->created_at->format('m/d');
-                $pointlog->time = $pointlog->created_at->format('H:i');
-                unset($pointlog->created_at);
-                return $pointlog;
-            });
-        } else if ($request->input('filter') == "minus") {
-            $pointlogs = $request->user()->pointlogs()->whereIn('type', ['use', 'export'])->paginate(10);
-            $pointlogs->transform(function ($pointlog) {
-                $pointlog->type = 'minus';
-                $pointlog->date = $pointlog->created_at->format('m/d');
-                $pointlog->time = $pointlog->created_at->format('H:i');
-                unset($pointlog->created_at);
-                return $pointlog;
-            });
-        }
-
-
-
-        return response()->json([
-            'success' => true,
-            'message' => '取得に成功しました',
-            'data' => [
-                'user' => $user,
-                'pointlogs' => $pointlogs
-            ]
-        ]);
+public function wallet(WalletFillterRequest $request)
+{
+    $user = $request->user()->load('points');
+    $user = $user->only('id', 'name', 'user_icon');
+    $user['point'] = $request->user()->points->point;
+    
+    $query = $request->user()->pointlogs();
+    
+    // フィルターに応じてクエリを構築
+    if ($request->input('filter') == "plus") {
+        $query->where('point_amount', '>', 0);
+    } else if ($request->input('filter') == "minus") {
+        $query->where('point_amount', '<', 0);
     }
+    
+    $pointlogs = $query->paginate(10);
+    
+    $pointlogs->transform(function ($pointlog) {
+        // ポイントの増減を数値で表現（プラス・マイナスをそのまま使用）
+        $pointlog->point_amount = (int)$pointlog->point_amount;
+        $pointlog->type = $pointlog->point_amount >= 0 ? 'plus' : 'minus';
+        $pointlog->date = $pointlog->created_at->format('m/d');
+        $pointlog->time = $pointlog->created_at->format('H:i');
+        unset($pointlog->created_at);
+        return $pointlog;
+    });
+
+    return response()->json([
+        'success' => true,
+        'message' => '取得に成功しました',
+        'data' => [
+            'user' => $user,
+            'pointlogs' => $pointlogs
+        ]
+    ]);
+}
     public function wallet_update(WalletUpdateRequest $request , $sns_id){
         //設計の改善の必要あり、ブランチを変更して作成します。
         $user = User::where('id', $sns_id)->with('points')->first();
