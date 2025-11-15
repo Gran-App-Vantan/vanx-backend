@@ -259,38 +259,54 @@ public function wallet(WalletFillterRequest $request)
             'message' => '更新に成功しました',
         ]);
     }
-    public function ranking(Request $request){
-        $users = User::where('user_job', 'player')
+    public function ranking(Request $request)
+    {
+        // 全プレイヤーのポイントを取得（1クエリ）
+        $allUsers = User::where('user_job', 'player')
             ->leftJoin('points', 'users.id', '=', 'points.user_id')
             ->orderByDesc('points.point')
-            ->select('users.*') // usersテーブルの全カラムを選択
-            ->with('points') // レスポンスでpointsオブジェクトを使えるようにEager Loading
-            ->paginate(10);
+            ->select('users.*', 'points.point')
+            ->get();
 
-        $users->getCollection()->transform(function ($user) {
+        // ランキングを計算
+        $rankedUsers = $allUsers->map(function($user) use ($allUsers) {
+            $higherRankedCount = $allUsers->where('point', '>', $user->point ?? 0)->count();
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'user_icon' => $user->user_icon,
-                'point' => $user->points->point ?? 0,
-                'priority' => User::where('user_job', 'player')
-                    ->leftJoin('points', 'users.id', '=', 'points.user_id')
-                    ->where('points.point', '>', ($user->points->point ?? 0))
-                    ->count() + 1,
+                'point' => $user->point ?? 0,
+                'rank' => $higherRankedCount + 1,
             ];
         });
 
-        $my_account = $request->user()->load('points');
-        $my_account = $my_account->only('id', 'name', 'user_icon');
-        $my_account['point'] = $request->user()->points->point;
+        // ページネーション
+        $perPage = 10;
+        $currentPage = request('page', 1);
+        $pagedData = collect($rankedUsers)->forPage($currentPage, $perPage);
+        $paginatedUsers = new \Illuminate\Pagination\LengthAwarePaginator(
+            $pagedData,
+            $rankedUsers->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        // ログインユーザーの情報を取得
+        $myAccount = $request->user()->only('id', 'name', 'user_icon');
+        $myAccount['point'] = $request->user()->points->point ?? 0;
+        
+        // ログインユーザーのランクを検索
+        $myRank = $rankedUsers->firstWhere('id', $request->user()->id)['rank'] ?? null;
+        $myAccount['rank'] = $myRank;
 
         return response()->json([
             'success' => true,
             'message' => '取得に成功しました',
             'data' => [
-                'my_account' => $my_account,
-                'users' => $users
+                'myAccount' => $myAccount,
+                'users' => $paginatedUsers
             ]
-        ]); 
+        ]);
     }
 }
