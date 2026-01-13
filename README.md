@@ -248,3 +248,8 @@ KADOKAWAドワンゴ情報工科学院で実施された、<b>「VANTAN文化祭
     </td>
   </tr>
 </table>
+
+---
+
+**フロントエンドリポジトリ**<br />
+https://github.com/Gran-App-Vantan/vanx-frontend
